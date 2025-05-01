@@ -5,7 +5,7 @@ import torch
 def fitness_function(model, data_loader):
     return model.evaluate(data_loader)
 
-def selection_tournament(population, fitnesses, num=2, tournament_size=3, selection_probability=0.75):
+def selection_tournament(population, fitnesses, selection_probability=0.75):
     """
     Tournament selection.
 
@@ -24,18 +24,25 @@ def selection_tournament(population, fitnesses, num=2, tournament_size=3, select
     - For tournament_size=1, selection becomes completely random
     - The same individual may be selected multiple times
     """
-    participants = list(range(len(population)))
-    tournaments = [random.sample(participants, tournament_size) for _ in range(num)]
+    indexes = list(range(len(population)))
+    random.shuffle(indexes)
 
-    winners = []
-    for contestants in tournaments:
-        if random.random() < selection_probability:
-            winner_idx = max(contestants, key=lambda i: fitnesses[i])
-        else:
-            winner_idx = random.choice(contestants)
-        winners.append(population[winner_idx])
+    group_size = len(population) // 3
+    group1 = indexes[:group_size]
+    group2 = indexes[group_size:2*group_size]
+    group3 = indexes[2*group_size:3*group_size]
+    groups = [group1, group2, group3]
     
-    return winners
+    winners = []
+    for group in groups:
+        if random.random() < selection_probability:
+            winner_idx = max(group, key=lambda i: fitnesses[i])
+        else:
+            winner_idx = random.choice(group)
+        winners.append((fitnesses[winner_idx], population[winner_idx]))
+    
+    winners.sort(reverse=True, key=lambda x: x[0])
+    return [winners[0], winners[1]]
 
 def selection_roulette(population, fitnesses, num=2):
     '''
