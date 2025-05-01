@@ -5,15 +5,16 @@ import torch
 def fitness_function(model, data_loader):
     return model.evaluate(data_loader)
 
-def selection_tournament(population, fitnesses, num=2, tournament_size=3):
+def selection_tournament(population, fitnesses, num=2, tournament_size=3, selection_probability=0.75):
     """
     Tournament selection.
 
     Parameters:
     - population: list of individuals
     - fitnesses: list of fitness value
-    - num: num of individuals to select
+    - num: num of individuals to select (>= 2)
     - tournament_size: num of contestants in the tournament
+    - selection_probability: probability of the strongest individual to win
     
     Returns:
     - selected individuals (winners)
@@ -23,15 +24,18 @@ def selection_tournament(population, fitnesses, num=2, tournament_size=3):
     - For tournament_size=1, selection becomes completely random
     - The same individual may be selected multiple times
     """
-    selected = []
-    for _ in range(num):
+    participants = list(range(len(population)))
+    tournaments = [random.sample(participants, tournament_size) for _ in range(num)]
 
-        contestants = random.sample(range(len(population)), tournament_size)
-
-        winner_index = max(contestants, key=lambda i: fitnesses[i])
-        selected.append(population[winner_index])
-
-    return selected
+    winners = []
+    for contestants in tournaments:
+        if random.random() < selection_probability:
+            winner_idx = max(contestants, key=lambda i: fitnesses[i])
+        else:
+            winner_idx = random.choice(contestants)
+        winners.append(population[winner_idx])
+    
+    return winners
 
 def selection_roulette(population, fitnesses, num=2):
     '''
