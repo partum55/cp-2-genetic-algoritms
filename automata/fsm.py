@@ -2,32 +2,38 @@ from abc import ABC, abstractmethod
 from model.cnn import CNN
 from genetic.operators import *
 from model.data_load import test_loader, train_loader
-
+import torch
 
 class CellularEvolutionaryAutomata(ABC):
     def __init__(
         self,
-        mutation_rate,
         grid_size,
         neighborhood_type: list,
         selection_type,
+        device,
         wrapped=True,
+        initial_mutation_rate= 1e-3,
+        minimal_mutation_rate= 1e-5,
     ):
-        self.mutation_rate = mutation_rate
+        self.initial_mutation_rate = initial_mutation_rate
+        self.minimal_mutation_rate = minimal_mutation_rate
+        self.decay_rate = 0.99
+        self.device = device
         self.grid = self.create_grid_population(grid_size)
         self.width = grid_size
         self.height = grid_size
         self.fitness_table = self.create_fitness_hash_map()
-        assert all(isinstance(row, list) for row in neighborhood_type)
         self.neighborhood_deltas = self.get_neighborhood_deltas(neighborhood_type)
         self.wrapped = wrapped
         self.selection_method = self.get_selection_method(selection_type)
         self.gen = 0
+
         # As of now one of ['rank_linear', 'tournament', 'roulette','rank_exponential']
 
     def create_grid_population(self, grid_size):
+        print(f"Creating grid of size Population: {grid_size}x{grid_size}")
         return [
-            [CNN.create_random_model() for _ in range(grid_size)]
+            [CNN.create_random_model(self.device) for _ in range(grid_size)]
             for _ in range(grid_size)
         ]
 
@@ -57,6 +63,11 @@ class CellularEvolutionaryAutomata(ABC):
             return selection_roulette
         raise ValueError("No such selection method.")
 
+    def get_mutation_rate(self):
+        return max(
+            self.minimal_mutation_rate,
+            self.initial_mutation_rate * (self.decay_rate ** self.gen)
+        )
     def get_neighborhood_wrapped(self, cell_pos):
         start_y, start_x = cell_pos
         positions = [(start_y, start_x)]
@@ -77,10 +88,15 @@ class CellularEvolutionaryAutomata(ABC):
         return positions
 
     def create_fitness_hash_map(self):
+        print("Creating fitness hash map")
         table = {}
         for y in range(self.height):
             for x in range(self.width):
                 table[(y, x)] = self.grid[y][x].evaluate(train_loader)
+                print(
+                    f"Fitness of cell ({y}, {x}) is {table[(y, x)]}"
+                )
+        print("Fitness hash map created")
         return table
 
     def get_neighborhood_fitness(self, neighborhood_positions):
@@ -112,12 +128,6 @@ class CellularEvolutionaryAutomata(ABC):
 
 
 class SyncCEA(CellularEvolutionaryAutomata):
-    def __init__(
-        self, mutation_rate, grid_size, neighborhood_type, selection_type, wrapped=True
-    ):
-        super().__init__(
-            mutation_rate, grid_size, neighborhood_type, selection_type, wrapped
-        )
 
     def create_next_gen(self):
         new_grid = [[None for _ in range(self.width)] for _ in range(self.height)]
@@ -131,12 +141,6 @@ class SyncCEA(CellularEvolutionaryAutomata):
 
 
 class AsyncCEA(CellularEvolutionaryAutomata):
-    def __init__(
-        self, mutation_rate, grid_size, neighborhood_type, selection_type, wrapped=True
-    ):
-        super().__init__(
-            mutation_rate, grid_size, neighborhood_type, selection_type, wrapped
-        )
 
     def create_next_gen(self):
         for y in range(self.height):
