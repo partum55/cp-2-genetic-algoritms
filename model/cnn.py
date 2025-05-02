@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
+
 class CNN(nn.Module):
 
     def __init__(self, device):
@@ -10,7 +11,9 @@ class CNN(nn.Module):
         self.device = device
         # conversion layers
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(
+            in_channels=32, out_channels=64, kernel_size=3, padding=1
+        )
 
         # batch norm
         self.bn1 = nn.BatchNorm2d(32)
@@ -47,7 +50,6 @@ class CNN(nn.Module):
                 correct += (predicted == labels).sum().item()
         return 100 * correct / total
 
-
     def get_flat_params(self):
         params = []
         for param in self.parameters():
@@ -59,7 +61,7 @@ class CNN(nn.Module):
         pointer = 0
         for param in self.parameters():
             num_params = param.numel()
-            param.data.copy_(flat_params[pointer:pointer + num_params].view_as(param))
+            param.data.copy_(flat_params[pointer : pointer + num_params].view_as(param))
             pointer += num_params
 
     @classmethod

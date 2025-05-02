@@ -47,15 +47,15 @@ class CellularEvolutionaryAutomata(ABC):
 
     @staticmethod
     def get_selection_method(selection_type):
-        if selection_type == 'rank_linear':
+        if selection_type == "rank_linear":
             return selection_rank_linear
-        if selection_type == 'rank_exponential':
+        if selection_type == "rank_exponential":
             return selection_rank_exponential
-        if selection_type == 'tournament':
+        if selection_type == "tournament":
             return selection_tournament
-        if selection_type == 'roulette':
+        if selection_type == "roulette":
             return selection_roulette
-        raise ValueError('No such selection method.')
+        raise ValueError("No such selection method.")
 
     def get_neighborhood_wrapped(self, cell_pos):
         start_y, start_x = cell_pos
@@ -123,7 +123,7 @@ class SyncCEA(CellularEvolutionaryAutomata):
         new_grid = [[None for _ in range(self.width)] for _ in range(self.height)]
         for y in range(self.height):
             for x in range(self.width):
-                child = self.get_child_from_cell((y,x))
+                child = self.get_child_from_cell((y, x))
                 new_grid[y][x] = child
         self.grid = new_grid
         self.gen += 1
@@ -141,7 +141,7 @@ class AsyncCEA(CellularEvolutionaryAutomata):
     def create_next_gen(self):
         for y in range(self.height):
             for x in range(self.width):
-                child = self.get_child_from_cell((y,x))
-                self.fitness_table[(y,x)] = child.evaluate(train_loader)
+                child = self.get_child_from_cell((y, x))
+                self.fitness_table[(y, x)] = child.evaluate(train_loader)
                 self.grid[y][x] = child
         self.gen += 1

@@ -2,8 +2,10 @@ import random
 import copy
 import torch
 
+
 def fitness_function(model, data_loader):
     return model.evaluate(data_loader)
+
 
 def selection_tournament(population, fitnesses, selection_probability=0.75):
     """
@@ -15,7 +17,7 @@ def selection_tournament(population, fitnesses, selection_probability=0.75):
     - num: num of individuals to select (>= 2)
     - tournament_size: num of contestants in the tournament
     - selection_probability: probability of the strongest individual to win
-    
+
     Returns:
     - selected individuals (winners)
 
@@ -29,10 +31,10 @@ def selection_tournament(population, fitnesses, selection_probability=0.75):
 
     group_size = len(population) // 3
     group1 = indexes[:group_size]
-    group2 = indexes[group_size:2*group_size]
-    group3 = indexes[2*group_size:3*group_size]
+    group2 = indexes[group_size : 2 * group_size]
+    group3 = indexes[2 * group_size : 3 * group_size]
     groups = [group1, group2, group3]
-    
+
     winners = []
     for group in groups:
         if random.random() < selection_probability:
@@ -40,39 +42,49 @@ def selection_tournament(population, fitnesses, selection_probability=0.75):
         else:
             winner_idx = random.choice(group)
         winners.append((fitnesses[winner_idx], population[winner_idx]))
-    
+
     winners.sort(reverse=True, key=lambda x: x[0])
     return [winners[0], winners[1]]
 
+
 def selection_roulette(population, fitnesses, num=2):
-    '''
+    """
     Roulette wheel selection
 
     Parameters:
     - population: list of individuals
     - fitnesses: list of fitness values
     - num: num of individuals to select
-    
+
     Returns:
-    - list of selected individuals 
+    - list of selected individuals
 
     Notes:
     - If all fitness values are zero, selection becomes completely random.
-    - For small populations or when fitness differences are minimal, consider using 
+    - For small populations or when fitness differences are minimal, consider using
       rank-based or tournament selection instead to maintain selection pressure.
-    '''
+    """
     total = sum(fitnesses)
-    
+
     # in case all fitnesses are 0
     if total == 0:
         return random.choice(population, k=num)
-    
+
     probabilities = [f / total for f in fitnesses]
 
     return random.choice(population, weights=probabilities, k=num)
 
-def selection_boltzmann(population, fitnesses, generation, num=2, initial_temp=100.0, cooling_rate=0.95, min_temp=0.1):
-    '''
+
+def selection_boltzmann(
+    population,
+    fitnesses,
+    generation,
+    num=2,
+    initial_temp=100.0,
+    cooling_rate=0.95,
+    min_temp=0.1,
+):
+    """
     Boltzmann selection with exponential cooling
 
     Parameters:
@@ -85,7 +97,7 @@ def selection_boltzmann(population, fitnesses, generation, num=2, initial_temp=1
     - min_temp: minimum temperature threshold
 
     Returns:
-    - list of selected individuals 
+    - list of selected individuals
 
     Notes:
     - Early generations (high temperature): More exploration, diverse selection
@@ -93,9 +105,9 @@ def selection_boltzmann(population, fitnesses, generation, num=2, initial_temp=1
     - Same individual may be selected multiple times
     - For temperature → ∞, selection becomes completely random
     - For temperature → 0, selection becomes deterministic (only best individual)
-    '''
+    """
     # exponential cooling
-    current_temp = max(initial_temp * (cooling_rate ** generation), min_temp)
+    current_temp = max(initial_temp * (cooling_rate**generation), min_temp)
 
     tf = torch.tensor(fitnesses, dtype=torch.float32)
     boltzmann = torch.exp(tf / current_temp)
@@ -103,6 +115,7 @@ def selection_boltzmann(population, fitnesses, generation, num=2, initial_temp=1
 
     selected = torch.multinomial(probabilities, num, replacement=True)
     return [population[i] for i in selected]
+
 
 def selection_rank_linear(population, fitnesses, num=2, selection_pressure=1.5):
     """
@@ -113,9 +126,9 @@ def selection_rank_linear(population, fitnesses, num=2, selection_pressure=1.5):
     - fitnesses: list of fitness
     - num: num of individuals to select
     - selection_pressure: selection pressure (the higher the pressure the more disperse ranks) (1.0 < pressure ≤ 2.0)
-    
+
     Returns:
-    - list of selected individuals 
+    - list of selected individuals
 
     Notes:
     - Works well when fitness values are very close together
@@ -126,15 +139,18 @@ def selection_rank_linear(population, fitnesses, num=2, selection_pressure=1.5):
     sorted_pop = [ind for _, ind in sorted(zip(fitnesses, population), reverse=True)]
 
     n = len(population)
-    ranks = torch.linspace(selection_pressure, 2 - selection_pressure, steps=n, dtype=torch.float32)
+    ranks = torch.linspace(
+        selection_pressure, 2 - selection_pressure, steps=n, dtype=torch.float32
+    )
 
     probabilities = ranks / ranks.sum()
 
     selected = torch.multinomial(probabilities, num, replacement=True)
     return [sorted_pop[i] for i in selected]
 
+
 def selection_rank_exponential(population, fitnesses, num=2, selection_pressure=1.5):
-    '''
+    """
     Rank selection with exponential ranging.
 
     Parameters:
@@ -142,16 +158,21 @@ def selection_rank_exponential(population, fitnesses, num=2, selection_pressure=
     - fitnesses: list of fitness
     - num: num of individuals to select
     - selection_pressure: selection pressure (the higher the pressure the more disperse ranks) (1.0 < pressure ≤ 2.0)
-    
+
     Returns:
-    - list of selected individuals 
+    - list of selected individuals
 
     Notes:
     - Provides stronger bias toward top-ranked individuals than linear version
     - Effective in later generations when convergence is needed
     - Same individual may be selected multiple times
-    '''
-    sorted_pop = [ind for _, ind in sorted(zip(fitnesses, population), key=lambda x: x[0], reverse=True)]
+    """
+    sorted_pop = [
+        ind
+        for _, ind in sorted(
+            zip(fitnesses, population), key=lambda x: x[0], reverse=True
+        )
+    ]
 
     ranks = torch.arange(len(population), dtype=torch.float32)
 
@@ -161,14 +182,18 @@ def selection_rank_exponential(population, fitnesses, num=2, selection_pressure=
     selected_indices = torch.multinomial(probabilities, num, replacement=True)
     return [sorted_pop[i] for i in selected_indices]
 
+
 def crossover(parent1, parent2):
     child = copy.deepcopy(parent1)
     flat_params1 = parent1.get_flat_params()
     flat_params2 = parent2.get_flat_params()
     crossover_point = random.randint(0, len(flat_params1))
-    new_params = torch.cat((flat_params1[:crossover_point], flat_params2[crossover_point:]))
+    new_params = torch.cat(
+        (flat_params1[:crossover_point], flat_params2[crossover_point:])
+    )
     child.set_flat_params(new_params)
     return child
+
 
 def mutate(model, mutation_rate):
     mutated_model = copy.deepcopy(model)
