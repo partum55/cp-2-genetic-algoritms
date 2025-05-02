@@ -109,7 +109,7 @@ class CellularEvolutionaryAutomata(ABC):
         return max(x for x in self.fitness_table.values())
 
     def get_final_fitness(self):
-        return max([x.evaluate(test_loader) for row in self.grid for x in row])
+        return self.grid(max((pair[1], pair[0]) for pair in self.fitness_table.items())[1]).evaluate(self.device)
 
     def get_child_from_cell(self, cell_pos):
         if self.wrapped:
