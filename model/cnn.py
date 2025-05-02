@@ -9,7 +9,7 @@ class CNN(nn.Module):
         super(CNN, self).__init__()
 
         self.device = device
-        # conversion layers
+        # convolutional layers
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(
             in_channels=32, out_channels=64, kernel_size=3, padding=1
