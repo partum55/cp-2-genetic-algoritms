@@ -72,3 +72,23 @@ class CNN(nn.Module):
             param.data = torch.randn_like(param)
 
         return model
+    
+    def train_adam(self, train_loader, lr=1e-3, epochs=10):
+        """
+        training the model using Adam optimizer
+        """
+        self.to(self.device)
+        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        self.train()
+        for _ in range(1, epochs + 1):
+            running_loss = 0.0
+            for images, labels in train_loader:
+                images, labels = images.to(self.device), labels.to(self.device)
+                optimizer.zero_grad()
+                outputs = self(images)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+                running_loss += loss.item()
+            avg_loss = running_loss / len(train_loader)
