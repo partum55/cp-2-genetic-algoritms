@@ -15,9 +15,11 @@ transform = v2.Compose(
 train_dataset = datasets.MNIST(
     root="./data", train=True, download=True, transform=transform
 )
+train_dataset = torch.utils.data.Subset(train_dataset, range(5000))
 test_dataset = datasets.MNIST(
     root="./data", train=False, download=True, transform=transform
 )
+test_dataset = torch.utils.data.Subset(test_dataset, range(1000))
 
 train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=1)
 test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=1)
