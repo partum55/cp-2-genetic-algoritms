@@ -14,7 +14,9 @@ class CellularEvolutionaryAutomata(ABC):
         wrapped=True,
         initial_mutation_rate= 1e-3,
         minimal_mutation_rate= 1e-5,
+        train_size = 5000,
     ):
+        self.train_size = train_size
         self.initial_mutation_rate = initial_mutation_rate
         self.minimal_mutation_rate = minimal_mutation_rate
         self.decay_rate = 0.99
@@ -27,7 +29,6 @@ class CellularEvolutionaryAutomata(ABC):
         self.wrapped = wrapped
         self.selection_method = self.get_selection_method(selection_type)
         self.gen = 0
-
         # As of now one of ['rank_linear', 'tournament', 'roulette','rank_exponential']
 
     def create_grid_population(self, grid_size):
@@ -92,7 +93,7 @@ class CellularEvolutionaryAutomata(ABC):
         table = {}
         for y in range(self.height):
             for x in range(self.width):
-                table[(y, x)] = self.grid[y][x].evaluate(train_loader)
+                table[(y, x)] = self.grid[y][x].evaluate(train_loader, self.train_size)
                 print(
                     f"Fitness of cell ({y}, {x}) is {table[(y, x)]}"
                 )
@@ -120,7 +121,7 @@ class CellularEvolutionaryAutomata(ABC):
         neighborhood = [self.grid[pos[0]][pos[1]] for pos in neighborhood_positions]
         parent_1, parent_2 = self.selection_method(neighborhood, neighborhood_fitness)
         child = crossover(parent_1, parent_2)
-        child = mutate(child, self.mutation_rate)
+        child = mutate(child, self.get_mutation_rate())
         return child
 
     @abstractmethod
