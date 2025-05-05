@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
-
+import time
 
 class CNN(nn.Module):
 
@@ -37,18 +37,33 @@ class CNN(nn.Module):
 
         return x
 
-    def evaluate(self, data_loader):
+    def evaluate(self, data_loader, max_samples=None):
+        print("Evaluating model...")
+        start = time.time()
         self.eval()
         correct = 0
         total = 0
         with torch.no_grad():
-            for images, labels in data_loader:
+            for batch_idx, (images, labels) in enumerate(data_loader):
+                if max_samples is not None and total >= max_samples:
+                    break
+                    
                 images, labels = images.to(self.device), labels.to(self.device)
                 outputs = self(images)
                 _, predicted = torch.max(outputs, 1)
-                total += labels.size(0)
+                batch_size = labels.size(0)
+                
+                # Handle partial last batch
+                remaining = max_samples - total if max_samples is not None else batch_size
+                if max_samples is not None and (total + batch_size) > max_samples:
+                    predicted = predicted[:remaining]
+                    labels = labels[:remaining]
+                    batch_size = remaining
+                    
+                total += batch_size
                 correct += (predicted == labels).sum().item()
-        return 100 * correct / total
+        print(f"Evaluation time: {time.time() - start:.2f} seconds")
+        return 100 * correct / total if total > 0 else 0.0
 
     def get_flat_params(self):
         params = []
