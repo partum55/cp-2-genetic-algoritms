@@ -89,15 +89,10 @@ class CellularEvolutionaryAutomata(ABC):
         return positions
 
     def create_fitness_hash_map(self):
-        print("Creating fitness hash map")
         table = {}
         for y in range(self.height):
             for x in range(self.width):
                 table[(y, x)] = self.grid[y][x].evaluate(train_loader, self.train_size)
-                print(
-                    f"Fitness of cell ({y}, {x}) is {table[(y, x)]}"
-                )
-        print("Fitness hash map created")
         return table
 
     def get_neighborhood_fitness(self, neighborhood_positions):
@@ -110,7 +105,8 @@ class CellularEvolutionaryAutomata(ABC):
         return max(x for x in self.fitness_table.values())
 
     def get_final_fitness(self):
-        return self.grid(max((pair[1], pair[0]) for pair in self.fitness_table.items())[1]).evaluate(test_loader)
+        max_pair = max((pair[1], pair[0]) for pair in self.fitness_table.items())[1]
+        return self.grid[max_pair].evaluate(test_loader)
 
     def get_child_from_cell(self, cell_pos):
         if self.wrapped:
@@ -150,3 +146,6 @@ class AsyncCEA(CellularEvolutionaryAutomata):
                 self.fitness_table[(y, x)] = child.evaluate(train_loader, self.train_size)
                 self.grid[y][x] = child
         self.gen += 1
+        print(f"Best fitness: {self.get_best_train_fitness()}")
+        print(f"Average fitness: {sum(self.fitness_table.values()) / len(self.fitness_table)}")
+        print(f"Generation: {self.gen}")
