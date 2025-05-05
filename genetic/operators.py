@@ -1,7 +1,8 @@
 import random
 import copy
 import torch
-
+import numpy as np
+from model.cnn import CNN
 
 def fitness_function(model, data_loader):
     return model.evaluate(data_loader)
@@ -182,24 +183,51 @@ def selection_rank_exponential(population, fitnesses, num=2, selection_pressure=
     selected_indices = torch.multinomial(probabilities, num, replacement=True)
     return [sorted_pop[i] for i in selected_indices]
 
+# Old version of crossover function with random parameter choice
+# def crossover(parent1, parent2):
+#     child = copy.deepcopy(parent1)
+#     flat_params1 = parent1.get_flat_params()
+#     flat_params2 = parent2.get_flat_params()
+#     crossover_point = random.randint(0, len(flat_params1))
+#     new_params = torch.cat(
+#         (flat_params1[:crossover_point], flat_params2[crossover_point:])
+#     )
+#     child.set_flat_params(new_params)
+#     return child
+def crossover(parent1, parent2, crossover_rate=0.5):
+    child = CNN(parent1.device).to(parent1.device)
 
-def crossover(parent1, parent2):
-    child = copy.deepcopy(parent1)
-    flat_params1 = parent1.get_flat_params()
-    flat_params2 = parent2.get_flat_params()
-    crossover_point = random.randint(0, len(flat_params1))
-    new_params = torch.cat(
-        (flat_params1[:crossover_point], flat_params2[crossover_point:])
-    )
-    child.set_flat_params(new_params)
+    if torch.rand(1) < crossover_rate:
+        child.conv1.weight.data = parent1.conv1.weight.data.clone()
+        child.conv1.bias.data = parent1.conv1.bias.data.clone()
+        child.bn1.weight.data = parent1.bn1.weight.data.clone()
+        child.bn1.bias.data = parent1.bn1.bias.data.clone()
+    else:
+        child.conv1.weight.data = parent2.conv1.weight.data.clone()
+        child.conv1.bias.data = parent2.conv1.bias.data.clone()
+        child.bn1.weight.data = parent2.bn1.weight.data.clone()
+        child.bn1.bias.data = parent2.bn1.bias.data.clone()
+
+    if torch.rand(1) < crossover_rate:
+        child.conv2.weight.data = parent1.conv2.weight.data.clone()
+        child.fc1.weight.data = parent1.fc1.weight.data.clone()
+    else:
+        child.conv2.weight.data = parent2.conv2.weight.data.clone()
+        child.fc1.weight.data = parent2.fc1.weight.data.clone()
+    
     return child
-
-
-def mutate(model, mutation_rate):
-    mutated_model = copy.deepcopy(model)
-    flat_params = mutated_model.get_flat_params()
-    for i in range(len(flat_params)):
-        if random.random() < mutation_rate:
-            flat_params[i] += torch.randn(1).item()
-    mutated_model.set_flat_params(flat_params)
-    return mutated_model
+# Old version of mutation function with random parameter choice
+# def mutate(model, mutation_rate):
+#     mutated_model = copy.deepcopy(model)
+#     flat_params = mutated_model.get_flat_params()
+#     for i in range(len(flat_params)):
+#         if random.random() < mutation_rate:
+#             flat_params[i] += torch.randn(1).item()
+#     mutated_model.set_flat_params(flat_params)
+#     return mutated_model
+def mutate(model, mutation_rate=0.1, scale=0.01):
+    for name, param in model.named_parameters():
+        if "weight" in name:
+            if torch.rand(1) < mutation_rate:
+                param.data += scale * torch.randn_like(param)
+    return model
