@@ -1,22 +1,39 @@
 /**
- * Main application script with enhanced UI interactions
+ * Updated application script with mode selection functionality
  */
 class MnistApp {
     constructor() {
         // References to DOM elements
-        this.recognizeButton = document.getElementById('recognize-button');
+        this.modeSelectionContainer = document.getElementById('mode-selection-container');
+        this.singleModelContainer = document.getElementById('single-model-container');
+        this.comparisonContainer = document.getElementById('comparison-container');
+
+        this.singleModelMode = document.getElementById('single-model-mode');
+        this.compareModelsMode = document.getElementById('compare-models-mode');
+
+        this.singleReturnButton = document.getElementById('single-return-button');
+        this.comparisonReturnButton = document.getElementById('comparison-return-button');
+
         this.themeSwitch = document.getElementById('theme-switch');
         this.showShortcutsButton = document.getElementById('show-shortcuts');
         this.shortcutsModal = document.getElementById('shortcuts-modal');
         this.closeModalButton = document.querySelector('.close-modal');
+
+        // Track current mode
+        this.currentMode = 'selection'; // 'selection', 'single', or 'comparison'
 
         // Initialize app elements
         this.initializeApp();
     }
 
     initializeApp() {
-        // Set up the recognize button
-        this.recognizeButton.addEventListener('click', this.handleRecognize.bind(this));
+        // Set up mode selection buttons
+        this.singleModelMode.addEventListener('click', () => this.setMode('single'));
+        this.compareModelsMode.addEventListener('click', () => this.setMode('comparison'));
+
+        // Set up return buttons
+        this.singleReturnButton.addEventListener('click', () => this.setMode('selection'));
+        this.comparisonReturnButton.addEventListener('click', () => this.setMode('selection'));
 
         // Set up theme toggle
         this.themeSwitch.addEventListener('change', this.toggleTheme.bind(this));
@@ -45,11 +62,61 @@ class MnistApp {
         this.addScrollAnimations();
     }
 
-    handleRecognize() {
-        // Get the drawn digit and recognize it with all models
-        if (window.modelManager) {
-            window.modelManager.recognizeWithAllModels();
+    setMode(mode) {
+        this.currentMode = mode;
+
+        // Hide all containers first
+        this.modeSelectionContainer.classList.add('hidden');
+        this.singleModelContainer.classList.add('hidden');
+        this.comparisonContainer.classList.add('hidden');
+
+        // Show the appropriate container
+        if (mode === 'selection') {
+            this.modeSelectionContainer.classList.remove('hidden');
+        } else if (mode === 'single') {
+            this.singleModelContainer.classList.remove('hidden');
+
+            // Initialize single model canvas if needed
+            if (!window.singleDrawingCanvas) {
+                window.singleDrawingCanvas = new DrawingCanvas('single-drawing-canvas', {
+                    clearButtonId: 'single-clear-button',
+                    waitingMessageId: 'single-waiting-message',
+                    loadingSpinnerId: 'single-loading-spinner',
+                    predictionResultId: 'single-prediction-result'
+                });
+            }
+
+            // Make sure model manager is in single mode
+            if (window.modelManager) {
+                window.modelManager.setComparisonMode(false);
+            }
+        } else if (mode === 'comparison') {
+            this.comparisonContainer.classList.remove('hidden');
+
+            // Initialize comparison canvas if needed
+            if (!window.comparisonDrawingCanvas) {
+                window.comparisonDrawingCanvas = new DrawingCanvas('comparison-drawing-canvas', {
+                    clearButtonId: 'comparison-clear-button',
+                    waitingMessageId: 'comparison-waiting-message',
+                    loadingSpinnerId: 'comparison-loading-spinner',
+                    predictionResultId: 'comparison-prediction-result'
+                });
+            }
+
+            // Make sure model manager is in comparison mode
+            if (window.modelManager) {
+                window.modelManager.setComparisonMode(true);
+            }
+
+            // Hide comparison results initially
+            const comparisonResultsSection = document.getElementById('comparison-results-section');
+            if (comparisonResultsSection) {
+                comparisonResultsSection.classList.add('hidden');
+            }
         }
+
+        // Scroll to top when changing modes
+        window.scrollTo(0, 0);
     }
 
     toggleTheme(e) {
@@ -111,6 +178,20 @@ class MnistApp {
         // Close shortcuts modal with 'Escape' key
         if (e.key === 'Escape' && !this.shortcutsModal.classList.contains('hidden')) {
             this.hideShortcuts();
+        }
+
+        // Add mode selection shortcuts
+        if (this.currentMode === 'selection') {
+            if (e.key === '1') {
+                this.setMode('single');
+            } else if (e.key === '2') {
+                this.setMode('comparison');
+            }
+        }
+
+        // Escape key to return to mode selection
+        if ((this.currentMode === 'single' || this.currentMode === 'comparison') && e.key === 'Escape') {
+            this.setMode('selection');
         }
     }
 
@@ -247,7 +328,7 @@ class MnistApp {
         });
 
         // Apply to elements you want to animate
-        document.querySelectorAll('.model-selection, .main-content, .footer').forEach(el => {
+        document.querySelectorAll('.model-selection, .main-content, .footer, .model-results').forEach(el => {
             el.classList.add('scroll-animate');
             observer.observe(el);
         });

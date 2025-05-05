@@ -1,5 +1,6 @@
 /**
- * Enhanced model selection and prediction functionality with animations
+ * Enhanced model selection and prediction functionality with support for both
+ * single model and comparison modes
  */
 class ModelManager {
     constructor() {
@@ -37,9 +38,11 @@ class ModelManager {
         this.apiEndpoint = 'http://localhost:5000/api/recognize';
         this.lastPrediction = null;
         this.allPredictions = {};
+        this.isComparisonMode = false;
 
         // Initialize model selection
         this.setupModelSelection();
+        this.setupRecognizeButtons();
     }
 
     setupModelSelection() {
@@ -57,7 +60,7 @@ class ModelManager {
 
                     // Reset indicator
                     const indicator = opt.querySelector('.model-select-indicator');
-                    indicator.style.width = '0';
+                    if (indicator) indicator.style.width = '0';
                 });
 
                 // Set the new active option
@@ -65,9 +68,11 @@ class ModelManager {
 
                 // Animate the indicator
                 const indicator = option.querySelector('.model-select-indicator');
-                setTimeout(() => {
-                    indicator.style.width = '100%';
-                }, 50);
+                if (indicator) {
+                    setTimeout(() => {
+                        indicator.style.width = '100%';
+                    }, 50);
+                }
             });
         });
 
@@ -75,30 +80,63 @@ class ModelManager {
         document.addEventListener('keydown', this.handleKeyPress.bind(this));
     }
 
-    handleKeyPress(e) {
-        // Number keys 1-3 for model selection
-        if (e.key === '1') {
-            this.selectModel('cnn');
-            document.querySelector('[data-model="cnn"]').classList.add('active');
-            document.querySelector('[data-model="syncCEA"]').classList.remove('active');
-            document.querySelector('[data-model="asyncCEA"]').classList.remove('active');
-        } else if (e.key === '2') {
-            this.selectModel('syncCEA');
-            document.querySelector('[data-model="cnn"]').classList.remove('active');
-            document.querySelector('[data-model="syncCEA"]').classList.add('active');
-            document.querySelector('[data-model="asyncCEA"]').classList.remove('active');
-        } else if (e.key === '3') {
-            this.selectModel('asyncCEA');
-            document.querySelector('[data-model="cnn"]').classList.remove('active');
-            document.querySelector('[data-model="syncCEA"]').classList.remove('active');
-            document.querySelector('[data-model="asyncCEA"]').classList.add('active');
-        } else if (e.key === 'Enter') {
-            // Enter key for recognize
-            this.recognizeDigit();
-        } else if (e.key === 'm' || e.key === 'M') {
-            // M key for model comparison
-            this.compareAllModels();
+    setupRecognizeButtons() {
+        // Set up single model recognize button
+        const singleRecognizeButton = document.getElementById('single-recognize-button');
+        if (singleRecognizeButton) {
+            singleRecognizeButton.addEventListener('click', () => {
+                this.recognizeSingleModel();
+            });
         }
+
+        // Set up comparison recognize button
+        const comparisonRecognizeButton = document.getElementById('comparison-recognize-button');
+        if (comparisonRecognizeButton) {
+            comparisonRecognizeButton.addEventListener('click', () => {
+                this.recognizeAllModels();
+            });
+        }
+    }
+
+    handleKeyPress(e) {
+        // Get the current visible container
+        const singleContainer = document.getElementById('single-model-container');
+        const comparisonContainer = document.getElementById('comparison-container');
+
+        // Only handle model selection shortcuts if in single mode and it's visible
+        if (!singleContainer.classList.contains('hidden')) {
+            // Number keys 1-3 for model selection
+            if (e.key === '1') {
+                this.selectModel('cnn');
+                document.querySelector('[data-model="cnn"]').classList.add('active');
+                document.querySelector('[data-model="syncCEA"]').classList.remove('active');
+                document.querySelector('[data-model="asyncCEA"]').classList.remove('active');
+            } else if (e.key === '2') {
+                this.selectModel('syncCEA');
+                document.querySelector('[data-model="cnn"]').classList.remove('active');
+                document.querySelector('[data-model="syncCEA"]').classList.add('active');
+                document.querySelector('[data-model="asyncCEA"]').classList.remove('active');
+            } else if (e.key === '3') {
+                this.selectModel('asyncCEA');
+                document.querySelector('[data-model="cnn"]').classList.remove('active');
+                document.querySelector('[data-model="syncCEA"]').classList.remove('active');
+                document.querySelector('[data-model="asyncCEA"]').classList.add('active');
+            }
+        }
+
+        // Handle Enter key for recognize in both modes
+        if (e.key === 'Enter') {
+            if (!singleContainer.classList.contains('hidden')) {
+                this.recognizeSingleModel();
+            } else if (!comparisonContainer.classList.contains('hidden')) {
+                this.recognizeAllModels();
+            }
+        }
+    }
+
+    setComparisonMode(isComparison) {
+        this.isComparisonMode = isComparison;
+        this.allPredictions = {}; // Reset predictions when changing modes
     }
 
     selectModel(modelType) {
@@ -134,55 +172,45 @@ class ModelManager {
         }
 
         // Update model name in prediction section
-        const modelNameDisplay = document.getElementById('model-name-display');
+        const modelNameDisplay = document.getElementById('single-model-name-display');
         if (modelNameDisplay && this.models[modelType]) {
             modelNameDisplay.textContent = this.models[modelType].name;
         }
 
         // If we already have a prediction, update the display with the selected model's results
         if (this.allPredictions[modelType]) {
-            this.displayPrediction(this.allPredictions[modelType], true);
+            this.displaySinglePrediction(this.allPredictions[modelType], true);
         } else if (Object.keys(this.allPredictions).length > 0) {
             // If we have other predictions but not for this model, reset and show suggestion
-            this.resetPrediction();
+            this.resetSinglePrediction();
             // Show the waiting message with a hint
-            document.getElementById('waiting-message').innerHTML = `
+            document.getElementById('single-waiting-message').innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="64" height="64"><path d="M1.181 12C2.121 6.88 6.608 3 12 3c5.392 0 9.878 3.88 10.819 9-.94 5.12-5.427 9-10.819 9-5.392 0-9.878-3.88-10.819-9zM12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0-2a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
                 <p>Click "Recognize" to analyze with ${this.models[modelType].name}</p>
             `;
         }
     }
 
-    resetPrediction() {
+    resetSinglePrediction() {
         // Hide prediction result
-        document.getElementById('prediction-result').classList.add('hidden');
-        document.getElementById('waiting-message').classList.remove('hidden');
-        document.getElementById('loading-spinner').classList.add('hidden');
-
-        // Clear model suggestion
-        document.getElementById('model-suggestion').innerHTML = '';
-
-        // Reset comparison section if visible
-        const comparisonSection = document.getElementById('comparison-section');
-        if (!comparisonSection.classList.contains('hidden')) {
-            comparisonSection.classList.add('hidden');
-        }
+        document.getElementById('single-prediction-result').classList.add('hidden');
+        document.getElementById('single-waiting-message').classList.remove('hidden');
+        document.getElementById('single-loading-spinner').classList.add('hidden');
     }
 
-    async recognizeDigit(shouldCompare = false) {
-        // Only proceed if we have drawing
-        if (!window.drawingCanvas.hasDrawn) {
+    async recognizeSingleModel() {
+        if (!window.singleDrawingCanvas || !window.singleDrawingCanvas.hasDrawn) {
             this.showToast('Please draw a digit first');
             return;
         }
 
         // Get image data from canvas
-        const imageData = window.drawingCanvas.getImageData();
+        const imageData = window.singleDrawingCanvas.getImageData();
 
         // Show loading spinner
-        document.getElementById('waiting-message').classList.add('hidden');
-        document.getElementById('loading-spinner').classList.remove('hidden');
-        document.getElementById('prediction-result').classList.add('hidden');
+        document.getElementById('single-waiting-message').classList.add('hidden');
+        document.getElementById('single-loading-spinner').classList.remove('hidden');
+        document.getElementById('single-prediction-result').classList.add('hidden');
 
         try {
             // Send image to API for the current model
@@ -193,39 +221,56 @@ class ModelManager {
             this.lastPrediction = response;
 
             // Process and display result
-            this.displayPrediction(response);
-
-            // If we're comparing all models, continue with other models
-            if (shouldCompare) {
-                await this.recognizeWithOtherModels(imageData);
-            }
+            this.displaySinglePrediction(response);
         } catch (error) {
             console.error('Error recognizing digit:', error);
-
-            // Show error message or fallback
-            this.handleRecognitionError();
+            this.handleRecognitionError('single');
         }
     }
 
-    async recognizeWithOtherModels(imageData) {
-        // Array of all model types
-        const allModelTypes = Object.keys(this.models);
-
-        // Only process models we haven't tried yet
-        const remainingModels = allModelTypes.filter(model => model !== this.currentModel && !this.allPredictions[model]);
-
-        // Process remaining models
-        for (const modelType of remainingModels) {
-            try {
-                const response = await this.sendImageForRecognition(imageData, modelType);
-                this.allPredictions[modelType] = response;
-            } catch (error) {
-                console.error(`Error recognizing with ${modelType}:`, error);
-            }
+    async recognizeAllModels() {
+        if (!window.comparisonDrawingCanvas || !window.comparisonDrawingCanvas.hasDrawn) {
+            this.showToast('Please draw a digit first');
+            return;
         }
 
-        // After all recognition is done, show the comparison
-        this.displayModelComparison();
+        // Get image data from canvas
+        const imageData = window.comparisonDrawingCanvas.getImageData();
+
+        // Show loading spinner
+        document.getElementById('comparison-waiting-message').classList.add('hidden');
+        document.getElementById('comparison-loading-spinner').classList.remove('hidden');
+        document.getElementById('comparison-prediction-result').classList.add('hidden');
+
+        // Hide comparison results section initially
+        const comparisonResultsSection = document.getElementById('comparison-results-section');
+        if (comparisonResultsSection) {
+            comparisonResultsSection.classList.add('hidden');
+        }
+
+        // Clear previous predictions
+        this.allPredictions = {};
+
+        try {
+            // Process all models
+            const modelTypes = Object.keys(this.models);
+
+            for (const modelType of modelTypes) {
+                const response = await this.sendImageForRecognition(imageData, modelType);
+                this.allPredictions[modelType] = response;
+            }
+
+            // Hide loading spinner and show scrolling message
+            document.getElementById('comparison-loading-spinner').classList.add('hidden');
+            document.getElementById('comparison-prediction-result').classList.remove('hidden');
+
+            // Display comparison results
+            this.displayComparisonResults();
+
+        } catch (error) {
+            console.error('Error recognizing digit with all models:', error);
+            this.handleRecognitionError('comparison');
+        }
     }
 
     async sendImageForRecognition(imageData, modelType) {
@@ -314,20 +359,28 @@ class ModelManager {
         };
     }
 
-    displayPrediction(result, skipAnimation = false) {
+    displaySinglePrediction(result, skipAnimation = false) {
         // Hide loading spinner and waiting message
-        document.getElementById('loading-spinner').classList.add('hidden');
-        document.getElementById('waiting-message').classList.add('hidden');
+        document.getElementById('single-loading-spinner').classList.add('hidden');
+        document.getElementById('single-waiting-message').classList.add('hidden');
 
-        // Update the predicted digit
-        document.getElementById('digit-value').textContent = result.digit;
+        // Update the predicted digit with proper formatting
+        const digitElement = document.getElementById('single-digit-value');
+        digitElement.textContent = result.digit;
+
+        // Ensure digit is perfectly centered
+        digitElement.style.display = 'flex';
+        digitElement.style.alignItems = 'center';
+        digitElement.style.justifyContent = 'center';
+        digitElement.style.width = '100%';
+        digitElement.style.height = '100%';
 
         // Get the main confidence value
         const mainConfidence = result.confidences[result.digit].toFixed(1);
-        document.getElementById('main-confidence').textContent = `${mainConfidence}%`;
+        document.getElementById('single-main-confidence').textContent = `${mainConfidence}%`;
 
         // Set color based on confidence level
-        const confidenceElement = document.getElementById('main-confidence');
+        const confidenceElement = document.getElementById('single-main-confidence');
         if (mainConfidence >= 90) {
             confidenceElement.style.color = 'var(--success-color)';
         } else if (mainConfidence >= 70) {
@@ -339,7 +392,7 @@ class ModelManager {
         }
 
         // Generate confidence bars
-        const confidenceContainer = document.getElementById('confidence-container');
+        const confidenceContainer = document.getElementById('single-confidence-container');
         confidenceContainer.innerHTML = ''; // Clear existing bars
 
         // Create a bar for each digit
@@ -362,14 +415,11 @@ class ModelManager {
         }
 
         // Show the prediction section
-        document.getElementById('prediction-result').classList.remove('hidden');
-
-        // Check if we should suggest a different model
-        this.suggestBetterModel(result);
+        document.getElementById('single-prediction-result').classList.remove('hidden');
 
         // Animate the bars after a short delay
         setTimeout(() => {
-            const bars = document.querySelectorAll('.bar-fill');
+            const bars = document.querySelectorAll('#single-confidence-container .bar-fill');
             bars.forEach((bar, index) => {
                 if (!skipAnimation) {
                     // Stagger the animations for a nicer effect
@@ -383,151 +433,379 @@ class ModelManager {
         }, skipAnimation ? 0 : 100);
     }
 
-    suggestBetterModel(result) {
-        const modelSuggestion = document.getElementById('model-suggestion');
-        modelSuggestion.innerHTML = '';
+    displayComparisonResults() {
+        // Show the comparison section
+        const comparisonSection = document.getElementById('comparison-results-section');
+        comparisonSection.classList.remove('hidden');
 
-        // Only suggest if we have predictions from at least two models
-        if (Object.keys(this.allPredictions).length < 2) {
-            return;
-        }
+        // Get the container for model results
+        const modelResultsContainer = document.getElementById('comparison-model-results');
+        modelResultsContainer.innerHTML = ''; // Clear existing results
 
-        // Find the model with the highest confidence for this digit
-        let bestModelType = this.currentModel;
-        let bestConfidence = result.confidences[result.digit];
+        // Find the best model (highest confidence for predicted digit)
+        let bestModelType = null;
+        let bestConfidence = -1;
 
         for (const [modelType, prediction] of Object.entries(this.allPredictions)) {
-            if (modelType !== this.currentModel &&
-                prediction.confidences[result.digit] > bestConfidence) {
+            const confidence = prediction.confidences[prediction.digit];
+            if (confidence > bestConfidence) {
+                bestConfidence = confidence;
                 bestModelType = modelType;
-                bestConfidence = prediction.confidences[result.digit];
             }
         }
 
-        // If a better model is found, show a suggestion
-        if (bestModelType !== this.currentModel) {
-            const bestModelName = this.models[bestModelType].name;
-            const confidenceDiff = (bestConfidence - result.confidences[result.digit]).toFixed(1);
-
-            modelSuggestion.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM11 7h2v2h-2V7zm0 4h2v6h-2v-6z"/></svg>
-                <p>${bestModelName} may give better results for this digit (${confidenceDiff}% higher confidence). 
-                <a href="#" class="switch-model" data-model="${bestModelType}">Switch to ${bestModelName}</a></p>
-            `;
-
-            // Add click event to the link
-            const switchLink = modelSuggestion.querySelector('.switch-model');
-            switchLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.selectModel(bestModelType);
-                document.querySelector(`[data-model="${bestModelType}"]`).click();
-            });
-        } else if (Object.keys(this.allPredictions).length >= 2) {
-            // If we have multiple predictions but this is the best, show a confirmation
-            modelSuggestion.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1.177-7.86l-2.765-2.767L7 12.431l3.119 3.12a1 1 0 0 0 1.414 0l5.952-5.95-1.062-1.06-5.6 5.599z"/></svg>
-                <p>${this.models[this.currentModel].name} gives the best confidence for this digit. 
-                <a href="#" class="compare-models">Compare all models</a></p>
-            `;
-
-            // Add click event to the link
-            const compareLink = modelSuggestion.querySelector('.compare-models');
-            compareLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.displayModelComparison();
-            });
-        }
-    }
-
-    async compareAllModels() {
-        // If we don't have drawings, show a message
-        if (!window.drawingCanvas.hasDrawn) {
-            this.showToast('Please draw a digit first');
-            return;
-        }
-
-        // If we already have predictions for all models, just display the comparison
-        const allModelTypes = Object.keys(this.models);
-        const allPredicted = allModelTypes.every(modelType => this.allPredictions[modelType]);
-
-        if (allPredicted) {
-            this.displayModelComparison();
-        } else {
-            // Otherwise, recognize with all models
-            await this.recognizeDigit(true);
-        }
-    }
-
-    displayModelComparison() {
-        const comparisonSection = document.getElementById('comparison-section');
-        const modelResults = comparisonSection.querySelector('.model-results');
-
-        // Clear existing results
-        modelResults.innerHTML = '';
-
-        // Add a result for each model
+        // Create a card for each model
         for (const [modelType, modelInfo] of Object.entries(this.models)) {
             const prediction = this.allPredictions[modelType];
-
             if (!prediction) continue;
 
             const confidence = prediction.confidences[prediction.digit].toFixed(1);
+            const isBestModel = modelType === bestModelType;
 
-            const resultElement = document.createElement('div');
-            resultElement.className = 'model-result';
+            const resultCard = document.createElement('div');
+            resultCard.className = `model-result ${isBestModel ? 'best-model' : ''}`;
 
-            resultElement.innerHTML = `
+            // Create the card content with improved digit display
+            resultCard.innerHTML = `
+                ${isBestModel ? '<div class="best-model-badge">★</div>' : ''}
                 <div class="model-result-name">${modelInfo.name}</div>
                 <div class="model-result-digit">${prediction.digit}</div>
                 <div class="model-result-confidence">
-                    <span style="font-weight: 600">${confidence}%</span> confidence
+                    <span class="confidence-value-large">${confidence}%</span> confidence
                 </div>
-                <button class="btn text select-model-btn" data-model="${modelType}">
-                    <span>Select Model</span>
-                </button>
+                <div class="model-result-detail">
+                    <div class="confidence-label-row">
+                        <span>Probability Distribution</span>
+                        <span>Digit ${prediction.digit}</span>
+                    </div>
+                    <div class="confidence-small-bar">
+                        <div class="confidence-small-bar-fill" style="width: ${confidence}%; background-color: var(--primary-color);"></div>
+                    </div>
+                    <div class="confidence-label-row">
+                        <span>Click for details</span>
+                        <span>${confidence}%</span>
+                    </div>
+                </div>
             `;
 
-            modelResults.appendChild(resultElement);
+            // Add the card to the container
+            modelResultsContainer.appendChild(resultCard);
+
+            // Add click event to expand the details
+            resultCard.addEventListener('click', () => {
+                this.expandModelDetails(modelType, prediction);
+            });
         }
 
-        // Show the comparison section
-        comparisonSection.classList.remove('hidden');
-
-        // Add click events to the select model buttons
-        const selectButtons = document.querySelectorAll('.select-model-btn');
-        selectButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const modelType = button.dataset.model;
-                this.selectModel(modelType);
-                document.querySelector(`[data-model="${modelType}"]`).click();
-                comparisonSection.classList.add('hidden');
-            });
-        });
-
-        // Set up close button
-        const closeButton = document.getElementById('close-comparison');
-        closeButton.addEventListener('click', () => {
-            comparisonSection.classList.add('hidden');
-        });
+        // Scroll to the comparison section
+        setTimeout(() => {
+            comparisonSection.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
     }
 
-    handleRecognitionError() {
+    expandModelDetails(modelType, prediction) {
+        // Create a modal for detailed view
+        const modal = document.createElement('div');
+        modal.className = 'model-detail-modal';
+
+        const modelInfo = this.models[modelType];
+        const confidence = prediction.confidences[prediction.digit].toFixed(1);
+
+        modal.innerHTML = `
+            <div class="model-detail-content">
+                <div class="modal-header">
+                    <h3>${modelInfo.name} - Detail View</h3>
+                    <button class="close-detail-modal">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path d="M12 10.586l4.95-4.95 1.414 1.414-4.95 4.95 4.95 4.95-1.414 1.414-4.95-4.95-4.95 4.95-1.414-1.414 4.95-4.95-4.95-4.95L7.05 5.636z"/></svg>
+                    </button>
+                </div>
+                <div class="model-detail-body">
+                    <div class="model-detail-header">
+                        <div class="detail-digit">${prediction.digit}</div>
+                        <div class="detail-info">
+                            <p class="detail-confidence">Confidence: <span class="highlight">${confidence}%</span></p>
+                            <p class="detail-desc">${modelInfo.description}</p>
+                        </div>
+                    </div>
+                    <div class="confidence-distribution-detail">
+                        <h4>Probability Distribution</h4>
+                        <div class="detail-bars-container"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Generate detailed confidence bars
+        const barsContainer = modal.querySelector('.detail-bars-container');
+
+        for (let i = 0; i < 10; i++) {
+            const conf = prediction.confidences[i];
+            const isPredicted = i === prediction.digit;
+
+            const barElement = document.createElement('div');
+            barElement.className = 'detail-confidence-bar';
+
+            barElement.innerHTML = `
+                <div class="detail-digit-label">${i}</div>
+                <div class="detail-bar-container">
+                    <div class="detail-bar-fill ${isPredicted ? 'predicted' : ''}" style="width: 0%"></div>
+                </div>
+                <div class="detail-confidence-value">${conf.toFixed(1)}%</div>
+            `;
+
+            barsContainer.appendChild(barElement);
+        }
+
+        // Add close event
+        const closeButton = modal.querySelector('.close-detail-modal');
+        closeButton.addEventListener('click', () => {
+            modal.classList.add('hiding');
+            setTimeout(() => {
+                document.body.removeChild(modal);
+            }, 300);
+        });
+
+        // Add style for modal if not already added
+        this.addModalStyles();
+
+        // Animate the modal in
+        setTimeout(() => {
+            modal.classList.add('visible');
+        }, 10);
+
+        // Animate the bars after a short delay
+        setTimeout(() => {
+            const bars = modal.querySelectorAll('.detail-bar-fill');
+            bars.forEach((bar, index) => {
+                setTimeout(() => {
+                    bar.style.width = `${prediction.confidences[index]}%`;
+                }, index * 50);
+            });
+        }, 300);
+    }
+
+    addModalStyles() {
+        // Only add styles once
+        if (document.getElementById('model-detail-modal-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'model-detail-modal-styles';
+        style.textContent = `
+            .model-detail-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s ease;
+            }
+            
+            .model-detail-modal.visible {
+                opacity: 1;
+                visibility: visible;
+            }
+            
+            .model-detail-modal.hiding {
+                opacity: 0;
+            }
+            
+            .model-detail-content {
+                background-color: var(--surface-color);
+                border-radius: var(--radius-lg);
+                width: 90%;
+                max-width: 600px;
+                max-height: 90vh;
+                overflow-y: auto;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                transform: scale(0.9);
+                transition: transform 0.3s ease;
+            }
+            
+            .model-detail-modal.visible .model-detail-content {
+                transform: scale(1);
+            }
+            
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: var(--spacing-lg);
+                border-bottom: 1px solid var(--border-color);
+            }
+            
+            .modal-header h3 {
+                margin: 0;
+                color: var(--primary-color);
+            }
+            
+            .close-detail-modal {
+                background: none;
+                border: none;
+                cursor: pointer;
+                display: flex;
+                padding: 0;
+            }
+            
+            .close-detail-modal svg {
+                fill: var(--text-secondary);
+                width: 24px;
+                height: 24px;
+                transition: fill 0.2s ease;
+            }
+            
+            .close-detail-modal:hover svg {
+                fill: var(--text-color);
+            }
+            
+            .model-detail-body {
+                padding: var(--spacing-lg);
+            }
+            
+            .model-detail-header {
+                display: flex;
+                margin-bottom: var(--spacing-xl);
+            }
+            
+            .detail-digit {
+                font-size: 4rem;
+                font-weight: 700;
+                width: 100px;
+                height: 100px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: var(--primary-color);
+                color: white;
+                border-radius: var(--radius-md);
+                margin-right: var(--spacing-lg);
+                box-shadow: 0 6px 15px rgba(79, 70, 229, 0.3);
+            }
+            
+            .detail-info {
+                flex: 1;
+            }
+            
+            .detail-confidence {
+                font-size: 1.2rem;
+                margin-bottom: var(--spacing-sm);
+            }
+            
+            .highlight {
+                color: var(--primary-color);
+                font-weight: 700;
+            }
+            
+            .detail-desc {
+                color: var(--text-secondary);
+                margin-bottom: var(--spacing-md);
+            }
+            
+            .confidence-distribution-detail h4 {
+                margin-bottom: var(--spacing-md);
+            }
+            
+            .detail-confidence-bar {
+                display: flex;
+                align-items: center;
+                height: 40px;
+                margin-bottom: var(--spacing-sm);
+            }
+            
+            .detail-digit-label {
+                width: 30px;
+                font-weight: 600;
+                font-size: 1.1rem;
+            }
+            
+            .detail-bar-container {
+                flex: 1;
+                height: 16px;
+                background-color: rgba(0, 0, 0, 0.1);
+                border-radius: 8px;
+                overflow: hidden;
+                margin: 0 var(--spacing-md);
+            }
+            
+            .dark-theme .detail-bar-container {
+                background-color: rgba(255, 255, 255, 0.1);
+            }
+            
+            .detail-bar-fill {
+                height: 100%;
+                width: 0;
+                background-color: var(--secondary-color);
+                border-radius: 8px;
+                transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+            
+            .detail-bar-fill.predicted {
+                background-color: var(--primary-color);
+            }
+            
+            .detail-confidence-value {
+                font-size: 0.95rem;
+                min-width: 60px;
+                text-align: right;
+                font-variant-numeric: tabular-nums;
+                font-weight: 600;
+            }
+            
+            @media (max-width: 768px) {
+                .model-detail-header {
+                    flex-direction: column;
+                    align-items: center;
+                    text-align: center;
+                }
+                
+                .detail-digit {
+                    margin-right: 0;
+                    margin-bottom: var(--spacing-md);
+                }
+            }
+        `;
+
+        document.head.appendChild(style);
+    }
+
+    handleRecognitionError(mode) {
+        // Determine which elements to use based on mode
+        const prefix = mode === 'comparison' ? 'comparison-' : 'single-';
+
         // Hide loading spinner
-        document.getElementById('loading-spinner').classList.add('hidden');
+        document.getElementById(`${prefix}loading-spinner`).classList.add('hidden');
 
         // Show an error message to the user
-        document.getElementById('waiting-message').classList.remove('hidden');
-        document.getElementById('waiting-message').innerHTML = `
+        document.getElementById(`${prefix}waiting-message`).classList.remove('hidden');
+        document.getElementById(`${prefix}waiting-message`).innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="64" height="64"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7v2h2v-2h-2zm0-8v6h2V7h-2z"/></svg>
             <p>Error recognizing digit. Please try again.</p>
         `;
 
         // Reset the message after a delay
         setTimeout(() => {
-            document.getElementById('waiting-message').innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="64" height="64"><path fill="none" d="M0 0h24v24H0z"/><path d="M5.463 4.433A9.961 9.961 0 0 1 12 2c5.523 0 10 4.477 10 10 0 2.136-.67 4.116-1.81 5.74L17 12h3A8 8 0 0 0 6.46 6.228l-.997-1.795zm13.074 15.134A9.961 9.961 0 0 1 12 22C6.477 22 2 17.523 2 12c0-2.136.67-4.116 1.81-5.74L7 12H4a8 8 0 0 0 13.54 5.772l.997 1.795z"/></svg>
-                <p>Draw a digit and click "Recognize" to see the results</p>
-            `;
+            let message = '';
+            if (mode === 'comparison') {
+                message = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="64" height="64"><path fill="none" d="M0 0h24v24H0z"/><path d="M5.463 4.433A9.961 9.961 0 0 1 12 2c5.523 0 10 4.477 10 10 0 2.136-.67 4.116-1.81 5.74L17 12h3A8 8 0 0 0 6.46 6.228l-.997-1.795zm13.074 15.134A9.961 9.961 0 0 1 12 22C6.477 22 2 17.523 2 12c0-2.136.67-4.116 1.81-5.74L7 12H4a8 8 0 0 0 13.54 5.772l.997 1.795z"/></svg>
+                    <p>Draw a digit and click "Compare All Models" to see the results</p>
+                `;
+            } else {
+                message = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="64" height="64"><path fill="none" d="M0 0h24v24H0z"/><path d="M5.463 4.433A9.961 9.961 0 0 1 12 2c5.523 0 10 4.477 10 10 0 2.136-.67 4.116-1.81 5.74L17 12h3A8 8 0 0 0 6.46 6.228l-.997-1.795zm13.074 15.134A9.961 9.961 0 0 1 12 22C6.477 22 2 17.523 2 12c0-2.136.67-4.116 1.81-5.74L7 12H4a8 8 0 0 0 13.54 5.772l.997 1.795z"/></svg>
+                    <p>Draw a digit and click "Recognize" to see the results</p>
+                `;
+            }
+
+            document.getElementById(`${prefix}waiting-message`).innerHTML = message;
         }, 3000);
     }
 
