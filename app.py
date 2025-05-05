@@ -149,6 +149,4 @@ def health_check():
 
 # Run the Flask app
 if __name__ == '__main__':
-    print(f"Starting Flask server using {device} device")
-    print(f"Access the application at http://localhost:5000")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=8000, debug=True)
