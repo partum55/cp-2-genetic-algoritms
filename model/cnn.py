@@ -37,32 +37,37 @@ class CNN(nn.Module):
 
         return x
 
-    def evaluate(self, data_loader, max_samples=None):
-        print("Evaluating model...")
-        start = time.time()
+    def evaluate(self, data_loader, max_samples=None, verbose=True):
+        if verbose:
+            print("Evaluating model...")
+            start = time.time()
+
         self.eval()
         correct = 0
         total = 0
+
         with torch.no_grad():
-            for batch_idx, (images, labels) in enumerate(data_loader):
-                if max_samples is not None and total >= max_samples:
-                    break
-                    
+            for images, labels in data_loader:
+                batch_size = labels.size(0)
+
+                if max_samples is not None:
+                    remaining = max_samples - total
+                    if remaining <= 0:
+                        break
+                    if batch_size > remaining:
+                        images = images[:remaining]
+                        labels = labels[:remaining]
+                        batch_size = remaining
+
                 images, labels = images.to(self.device), labels.to(self.device)
                 outputs = self(images)
                 _, predicted = torch.max(outputs, 1)
-                batch_size = labels.size(0)
-                
-                # Handle partial last batch
-                remaining = max_samples - total if max_samples is not None else batch_size
-                if max_samples is not None and (total + batch_size) > max_samples:
-                    predicted = predicted[:remaining]
-                    labels = labels[:remaining]
-                    batch_size = remaining
-                    
-                total += batch_size
+
                 correct += (predicted == labels).sum().item()
-        print(f"Evaluation time: {time.time() - start:.2f} seconds")
+                total += batch_size
+
+        if verbose:
+            print(f"Evaluation time: {time.time() - start:.2f} seconds")
         return 100 * correct / total if total > 0 else 0.0
 
     def get_flat_params(self):
