@@ -147,6 +147,6 @@ class AsyncCEA(CellularEvolutionaryAutomata):
         for y in range(self.height):
             for x in range(self.width):
                 child = self.get_child_from_cell((y, x))
-                self.fitness_table[(y, x)] = child.evaluate(train_loader)
+                self.fitness_table[(y, x)] = child.evaluate(train_loader, self.train_size)
                 self.grid[y][x] = child
         self.gen += 1
