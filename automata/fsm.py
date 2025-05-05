@@ -109,16 +109,33 @@ class CellularEvolutionaryAutomata(ABC):
         return self.grid[max_pair].evaluate(test_loader)
 
     def get_child_from_cell(self, cell_pos):
+        current_individual = self.grid[cell_pos[0]][cell_pos[1]]
+        
+        if self.is_in_top_k(cell_pos, k=5):
+            return current_individual
+
         if self.wrapped:
             neighborhood_positions = self.get_neighborhood_wrapped(cell_pos)
         else:
             neighborhood_positions = self.get_neighborhood_bounded(cell_pos)
+        
         neighborhood_fitness = self.get_neighborhood_fitness(neighborhood_positions)
         neighborhood = [self.grid[pos[0]][pos[1]] for pos in neighborhood_positions]
+        
         parent_1, parent_2 = self.selection_method(neighborhood, neighborhood_fitness)
         child = crossover(parent_1, parent_2)
         child = mutate(child, self.get_mutation_rate())
         return child
+
+    def is_in_top_k(self, cell_pos, k=5):
+        """Check if the cell is in the top-k fittest using the precomputed fitness table."""
+        sorted_cells = sorted(
+            self.fitness_table.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )
+        top_k_cells = [cell for cell, _ in sorted_cells[:k]]
+        return cell_pos in top_k_cells
 
     @abstractmethod
     def create_next_gen(self): ...
