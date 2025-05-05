@@ -1,12 +1,21 @@
 /**
- * Simplified Canvas functionality for digit drawing
- * Focuses only on drawing lines without any extra effects
+ * Enhanced Canvas functionality for digit drawing with support for multiple canvases
  */
 class DrawingCanvas {
-    constructor() {
-        this.canvas = document.getElementById('drawing-canvas');
+    constructor(canvasId, options = {}) {
+        this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
-        this.canvasOverlay = document.querySelector('.canvas-overlay');
+        this.canvasOverlay = this.canvas.parentElement.querySelector('.canvas-overlay');
+
+        // Get related element IDs from options or use defaults
+        this.clearButtonId = options.clearButtonId || 'clear-button';
+        this.waitingMessageId = options.waitingMessageId || 'waiting-message';
+        this.loadingSpinnerId = options.loadingSpinnerId || 'loading-spinner';
+        this.predictionResultId = options.predictionResultId || 'prediction-result';
+        this.comparisonSectionId = options.comparisonSectionId || 'comparison-results-section';
+
+        this.clearButton = document.getElementById(this.clearButtonId);
+
         this.isDrawing = false;
         this.hasDrawn = false;
 
@@ -46,13 +55,14 @@ class DrawingCanvas {
         this.canvas.addEventListener('touchend', this.stopDrawing.bind(this));
 
         // Clear button
-        const clearButton = document.getElementById('clear-button');
-        clearButton.addEventListener('click', this.clearCanvas.bind(this));
+        if (this.clearButton) {
+            this.clearButton.addEventListener('click', this.clearCanvas.bind(this));
+        }
 
         // Handle window resize
         window.addEventListener('resize', this.handleResize.bind(this));
 
-        // Keyboard shortcuts
+        // Keyboard shortcuts for this canvas
         document.addEventListener('keydown', this.handleKeyPress.bind(this));
     }
 
@@ -107,10 +117,10 @@ class DrawingCanvas {
         this.hasDrawn = false;
 
         // Hide any prediction results
-        const predictionResult = document.getElementById('prediction-result');
-        const waitingMessage = document.getElementById('waiting-message');
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const comparisonSection = document.getElementById('comparison-section');
+        const predictionResult = document.getElementById(this.predictionResultId);
+        const waitingMessage = document.getElementById(this.waitingMessageId);
+        const loadingSpinner = document.getElementById(this.loadingSpinnerId);
+        const comparisonSection = document.getElementById(this.comparisonSectionId);
 
         if (predictionResult) predictionResult.classList.add('hidden');
         if (waitingMessage) waitingMessage.classList.remove('hidden');
@@ -175,6 +185,12 @@ class DrawingCanvas {
     }
 
     handleKeyPress(e) {
+        // Only handle keyboard events if this canvas's container is visible
+        const canvasContainer = this.canvas.closest('.app-container');
+        if (canvasContainer && canvasContainer.classList.contains('hidden')) {
+            return;
+        }
+
         // 'C' key for clear
         if (e.key === 'c' || e.key === 'C') {
             this.clearCanvas();
@@ -194,8 +210,3 @@ class DrawingCanvas {
         return this.canvas.toDataURL('image/png');
     }
 }
-
-// Initialize canvas when window loads
-window.addEventListener('load', () => {
-    window.drawingCanvas = new DrawingCanvas();
-});
