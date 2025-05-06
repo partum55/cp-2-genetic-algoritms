@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from model.cnn import CNN
 from genetic.operators import *
-from model.data_load import test_loader, train_loader
-import torch
+import heapq
 
 class CellularEvolutionaryAutomata(ABC):
     def __init__(
@@ -11,11 +10,15 @@ class CellularEvolutionaryAutomata(ABC):
         neighborhood_type: list,
         selection_type,
         device,
+        train_loader,
+        test_loader,
         wrapped=True,
         initial_mutation_rate= 1e-3,
         minimal_mutation_rate= 1e-5,
-        train_size = 5000,
+        train_size = 500,
     ):
+        self.train_loader = train_loader
+        self.test_loader = test_loader
         self.train_size = train_size
         self.initial_mutation_rate = initial_mutation_rate
         self.minimal_mutation_rate = minimal_mutation_rate
@@ -88,11 +91,22 @@ class CellularEvolutionaryAutomata(ABC):
                 positions.append((y, x))
         return positions
 
-    def create_fitness_hash_map(self):
+    def get_neighborhood(self, cell_pos):
+        return (
+            self.get_neighborhood_wrapped(cell_pos)
+            if self.wrapped
+            else self.get_neighborhood_bounded(cell_pos)
+        )
+
+    def create_fitness_hash_map(self, reuse: dict = None):
         table = {}
         for y in range(self.height):
             for x in range(self.width):
-                table[(y, x)] = self.grid[y][x].evaluate(train_loader, self.train_size)
+                coord = (y, x)
+                if reuse and coord in reuse:
+                    table[coord] = reuse[coord]
+                else:
+                    table[coord] = self.grid[y][x].evaluate(self.train_loader, self.train_size)
         return table
 
     def get_neighborhood_fitness(self, neighborhood_positions):
@@ -102,66 +116,79 @@ class CellularEvolutionaryAutomata(ABC):
         return fitness
 
     def get_best_train_fitness(self):
-        return max(x for x in self.fitness_table.values())
+        best_coord, best_val = max(self.fitness_table.items(), key=lambda x: x[1])
+        return best_val
 
     def get_final_fitness(self):
         max_pair = max((pair[1], pair[0]) for pair in self.fitness_table.items())[1]
-        return self.grid[max_pair].evaluate(test_loader)
+        return self.grid[max_pair].evaluate(self.test_loader)
 
     def get_child_from_cell(self, cell_pos):
-        current_individual = self.grid[cell_pos[0]][cell_pos[1]]
-        
-        if self.is_in_top_k(cell_pos, k=5):
-            return current_individual
-
-        if self.wrapped:
-            neighborhood_positions = self.get_neighborhood_wrapped(cell_pos)
-        else:
-            neighborhood_positions = self.get_neighborhood_bounded(cell_pos)
+        neighborhood_positions = self.get_neighborhood(cell_pos)
         
         neighborhood_fitness = self.get_neighborhood_fitness(neighborhood_positions)
         neighborhood = [self.grid[pos[0]][pos[1]] for pos in neighborhood_positions]
         
         parent_1, parent_2 = self.selection_method(neighborhood, neighborhood_fitness)
-        child = crossover(parent_1, parent_2)
+        child = crossover_mask(parent_1, parent_2)
         child = mutate(child, self.get_mutation_rate())
         return child
-
-    def is_in_top_k(self, cell_pos, k=5):
-        """Check if the cell is in the top-k fittest using the precomputed fitness table."""
-        sorted_cells = sorted(
-            self.fitness_table.items(),
-            key=lambda item: item[1],
-            reverse=True
-        )
-        top_k_cells = [cell for cell, _ in sorted_cells[:k]]
-        return cell_pos in top_k_cells
 
     @abstractmethod
     def create_next_gen(self): ...
 
 
 class SyncCEA(CellularEvolutionaryAutomata):
+    def create_next_gen(self, elite=0.1):
+        new_grid = [[None] * self.width for _ in range(self.height)]
+        elite_count = max(1, int(self.width * self.height * elite))
+        top_k = sorted(self.fitness_table.items(), key=lambda x: x[1], reverse=True)[:elite_count]
+        top_k_coordinates = {x[0] for x in top_k}
 
-    def create_next_gen(self):
-        new_grid = [[None for _ in range(self.width)] for _ in range(self.height)]
         for y in range(self.height):
             for x in range(self.width):
-                child = self.get_child_from_cell((y, x))
-                new_grid[y][x] = child
+                if (y, x) in top_k_coordinates:
+                    new_grid[y][x] = self.grid[y][x]
+                else:
+                    child = self.get_child_from_cell((y, x))
+                    new_grid[y][x] = child
+        
         self.grid = new_grid
         self.gen += 1
-        self.fitness_table = self.create_fitness_hash_map()
-
+        elite_fitness = {coord: self.fitness_table[coord] for coord in top_k_coordinates}
+        self.fitness_table = self.create_fitness_hash_map(reuse=elite_fitness)
 
 class AsyncCEA(CellularEvolutionaryAutomata):
 
-    def create_next_gen(self):
+    def create_next_gen(self, elite=0.1):
+        k = max(1, int(self.width * self.height * elite))
+
+        top_k_heap = [
+            (fitness, coord)
+            for coord, fitness in self.fitness_table.items()
+        ]
+        heapq.heapify(top_k_heap)
+        top_k_heap = heapq.nlargest(k, top_k_heap)
+        heapq.heapify(top_k_heap)
+
+        top_k_coords_set = {coord for _, coord in top_k_heap}
+
         for y in range(self.height):
             for x in range(self.width):
-                child = self.get_child_from_cell((y, x))
-                self.fitness_table[(y, x)] = child.evaluate(train_loader, self.train_size)
+                coord = (y, x)
+                if coord in top_k_coords_set:
+                    continue
+
+                child = self.get_child_from_cell(coord)
+                child_fitness = child.evaluate(self.train_loader, self.train_size)
+                self.fitness_table[coord] = child_fitness
                 self.grid[y][x] = child
+
+                if child_fitness > top_k_heap[0][0]:
+                    heapq.heappop(top_k_heap)
+                    heapq.heappush(top_k_heap, (child_fitness, coord))
+                    top_k_coords_set = {coord for _, coord in top_k_heap}
+
         self.gen += 1
         print(f"Best fitness: {self.get_best_train_fitness()}")
         print(f"Average fitness: {sum(self.fitness_table.values()) / len(self.fitness_table)}")
