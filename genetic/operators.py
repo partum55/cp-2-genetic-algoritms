@@ -1,8 +1,11 @@
-import random
 import copy
-import torch
+import random
+
 import numpy as np
+import torch
+
 from model.cnn import CNN
+
 
 def fitness_function(model, data_loader):
     return model.evaluate(data_loader)
@@ -73,7 +76,7 @@ def selection_roulette(population, fitnesses, num=2):
 
     probabilities = [f / total for f in fitnesses]
 
-    return random.choice(population, weights=probabilities, k=num)
+    return random.choices(population, weights=probabilities, k=num)
 
 
 def selection_boltzmann(
@@ -183,38 +186,71 @@ def selection_rank_exponential(population, fitnesses, num=2, selection_pressure=
     selected_indices = torch.multinomial(probabilities, num, replacement=True)
     return [sorted_pop[i] for i in selected_indices]
 
-# Old version of crossover function with random parameter choice
-# def crossover(parent1, parent2):
-#     child = copy.deepcopy(parent1)
-#     flat_params1 = parent1.get_flat_params()
-#     flat_params2 = parent2.get_flat_params()
-#     crossover_point = random.randint(0, len(flat_params1))
-#     new_params = torch.cat(
-#         (flat_params1[:crossover_point], flat_params2[crossover_point:])
-#     )
-#     child.set_flat_params(new_params)
-#     return child
-def crossover(parent1, parent2):
-    child = CNN(parent1.device)
-    for child_param, param1, param2 in zip(child.parameters(), parent1.parameters(), parent2.parameters()):
+
+def crossover(parent1, parent2, small):
+    child = CNN(small).to(CNN.dataset_device)
+    for child_param, param1, param2 in zip(
+        child.parameters(), parent1.parameters(), parent2.parameters()
+    ):
         if torch.rand(1).item() > 0.5:
             child_param.data.copy_(param1.data)
         else:
             child_param.data.copy_(param2.data)
     return child
-def crossover_blend(parent1, parent2, alpha=0.5):
-    child = CNN(parent1.device)
-    for child_param, param1, param2 in zip(child.parameters(), parent1.parameters(), parent2.parameters()):
+
+
+def crossover_blend(parent1, parent2, small, alpha=0.5):
+    child = CNN(small).to(CNN.dataset_device)
+    for child_param, param1, param2 in zip(
+        child.parameters(), parent1.parameters(), parent2.parameters()
+    ):
         child_param.data.copy_(alpha * param1.data + (1 - alpha) * param2.data)
     return child
-def crossover_mask(parent1, parent2):
-    child = CNN(parent1.device)
-    for child_param, param1, param2 in zip(child.parameters(), parent1.parameters(), parent2.parameters()):
+
+
+def crossover_mask(parent1, parent2, small):
+    child = CNN(small).to(CNN.dataset_device)
+    for child_param, param1, param2 in zip(
+        child.parameters(), parent1.parameters(), parent2.parameters()
+    ):
         mask = torch.rand_like(param1) > 0.5
         child_param.data.copy_(torch.where(mask, param1.data, param2.data))
     return child
 
-def mutate(model, mutation_rate=0.1, scale=0.001):
+
+def crossover_two_point(parent1, parent2, small):
+    child = CNN(small).to(CNN.dataset_device)
+    for child_param, param1, param2 in zip(
+        child.parameters(), parent1.parameters(), parent2.parameters()
+    ):
+        # Flatten parameters
+        flat1 = param1.data.view(-1)
+        flat2 = param2.data.view(-1)
+        length = flat1.size(0)
+
+        if length < 2:
+            # Not enough data for two-point crossover, just pick one
+            child_param.data.copy_(
+                param1.data if torch.rand(1).item() > 0.5 else param2.data
+            )
+            continue
+
+        # Select two crossover points
+        point1, point2 = sorted(random.sample(range(length), 2))
+
+        # Create child flat tensor
+        child_flat = torch.empty_like(flat1)
+        child_flat[:point1] = flat1[:point1]
+        child_flat[point1:point2] = flat2[point1:point2]
+        child_flat[point2:] = flat1[point2:]
+
+        # Reshape and copy to child
+        child_param.data.copy_(child_flat.view_as(param1.data))
+
+    return child
+
+
+def mutate(model, mutation_rate=0.1, scale=0.15):
     for name, param in model.named_parameters():
         if "weight" in name:
             if torch.rand(1) < mutation_rate:
