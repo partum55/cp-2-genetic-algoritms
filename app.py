@@ -6,6 +6,7 @@ from PIL import Image
 import io
 import base64
 import re
+import json
 import os
 
 # Import the required model classes
@@ -27,21 +28,25 @@ os.makedirs("saved_models", exist_ok=True)
 def load_models():
     models = {}
 
+    # Create directory for saved models if it doesn't exist
+    os.makedirs("saved_models", exist_ok=True)
+
+    # Attempt to load each model individually
     try:
         # Load standard CNN model
-        cnn_model = CNN(device).to(device)
+        cnn_model = CNN().to(device)
         cnn_model.load_state_dict(torch.load('saved_models/cnn_model.pth', map_location=device))
         models['cnn'] = cnn_model
         print("Loaded CNN model")
 
         # Load best SyncCEA model
-        sync_cea_model = CNN(device).to(device)
+        sync_cea_model = CNN().to(device)
         sync_cea_model.load_state_dict(torch.load('saved_models/sync_cea_best.pth', map_location=device))
         models['syncCEA'] = sync_cea_model
         print("Loaded SyncCEA model")
 
         # Load best AsyncCEA model
-        async_cea_model = CNN(device).to(device)
+        async_cea_model = CNN().to(device)
         async_cea_model.load_state_dict(torch.load('saved_models/async_cea_best.pth', map_location=device))
         models['asyncCEA'] = async_cea_model
         print("Loaded AsyncCEA model")
@@ -50,10 +55,10 @@ def load_models():
         print(f"Warning: {e}")
         print("Using random models for demonstration.")
 
-        # For demonstration, create random models if saved ones are not found
-        models['cnn'] = CNN.create_random_model(device)
-        models['syncCEA'] = CNN.create_random_model(device)
-        models['asyncCEA'] = CNN.create_random_model(device)
+        # Create correctly randomized models if saved ones are not found
+        models['cnn'] = CNN.create_random_model(CNN, device)
+        models['syncCEA'] = CNN.create_random_model(CNN, device)
+        models['asyncCEA'] = CNN.create_random_model(CNN, device)
 
     return models
 
@@ -146,6 +151,10 @@ def health_check():
         'device': str(device)
     })
 
+
+# @app.route('/api/model_metrics', methods=['GET'])
+# def get_model_metrics():
+#     return jsonify(model_metrics)
 
 # Run the Flask app
 if __name__ == '__main__':
