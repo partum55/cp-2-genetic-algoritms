@@ -65,7 +65,9 @@ def cellular_genetic_training(
     CNN.batch_size = batch_size  # Set the batch size for the dataset
     ### for BIG MNIST dataset train_loader has 50000, san
     CNN.preload_dataset(train_loader, sample_size=0.04)
-    CNN.prepare_evaluation_batch(sample_size=training_batch_size, variation_factor=0.05, seed=0)
+    CNN.prepare_evaluation_batch(
+        sample_size=training_batch_size, variation_factor=0.05, seed=0
+    )
 
     with open(filename, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -79,7 +81,7 @@ def cellular_genetic_training(
                 neighborhood_type,
                 selection_type,
                 small_mnist=small_mnist,
-                training_batch_size = training_batch_size,
+                training_batch_size=training_batch_size,
                 variation_factor=0.05,
             )
         else:
@@ -88,7 +90,7 @@ def cellular_genetic_training(
                 neighborhood_type,
                 selection_type,
                 small_mnist=small_mnist,
-                training_batch_size = training_batch_size,
+                training_batch_size=training_batch_size,
                 variation_factor=0.05,
             )
 

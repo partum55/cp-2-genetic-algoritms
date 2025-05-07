@@ -14,11 +14,12 @@ class CNN(nn.Module):
     training_batch_size = None
     eval_images = None
     eval_labels = None
+
     @classmethod
     def preload_dataset(cls, data_loader, sample_size=None, variation_factor=0.05):
         """
         Preload the entire dataset into memory once for all model instances
-        
+
         Args:
             data_loader: PyTorch DataLoader with the dataset
             sample_size: Optional int or float. If int, number of samples to keep.
@@ -42,55 +43,50 @@ class CNN(nn.Module):
                 all_images.append(images)
                 all_labels.append(labels)
 
-
         all_images = torch.cat(all_images)
         all_labels = torch.cat(all_labels)
-        
 
         if sample_size is not None:
             original_size = len(all_labels)
-            
 
             if isinstance(sample_size, float) and 0 < sample_size < 1:
                 sample_size = int(original_size * sample_size)
-            
 
             if not isinstance(sample_size, int) or sample_size <= 0:
-                raise ValueError("sample_size must be positive int or float between 0 and 1")
-                
+                raise ValueError(
+                    "sample_size must be positive int or float between 0 and 1"
+                )
 
             sample_size = min(sample_size, original_size)
-            
 
             unique_labels = torch.unique(all_labels)
             num_classes = len(unique_labels)
             base_samples_per_class = sample_size // num_classes
-            
-    
-            variations = torch.FloatTensor(num_classes).uniform_(1-variation_factor, 1+variation_factor)
+
+            variations = torch.FloatTensor(num_classes).uniform_(
+                1 - variation_factor, 1 + variation_factor
+            )
 
             variations = variations * (num_classes / variations.sum())
-            
 
-            samples_per_class_varied = [int(base_samples_per_class * v) for v in variations]
-            
+            samples_per_class_varied = [
+                int(base_samples_per_class * v) for v in variations
+            ]
 
             total_selected = sum(samples_per_class_varied)
             difference = sample_size - total_selected
-            
 
-            indices_to_adjust = torch.randperm(num_classes)[:abs(difference)]
+            indices_to_adjust = torch.randperm(num_classes)[: abs(difference)]
             for idx in indices_to_adjust:
                 samples_per_class_varied[idx] += 1 if difference > 0 else -1
-                
 
             min_samples = max(1, base_samples_per_class // 4)
             for i in range(len(samples_per_class_varied)):
                 if samples_per_class_varied[i] < min_samples:
                     samples_per_class_varied[i] = min_samples
-            
+
             sampled_indices = []
-            for i,label in enumerate(unique_labels):
+            for i, label in enumerate(unique_labels):
                 class_indices = torch.where(all_labels == label)[0]
                 target_samples = samples_per_class_varied[i]
 
@@ -101,22 +97,18 @@ class CNN(nn.Module):
 
                     perm = torch.randperm(len(class_indices))
                     selected = class_indices[perm[:target_samples]]
-                
+
                 sampled_indices.append(selected)
-            
 
             sampled_indices = torch.cat(sampled_indices)
-            
 
             all_images = all_images[sampled_indices]
             all_labels = all_labels[sampled_indices]
-            
+
             print(f"Reduced dataset from {original_size} to {len(all_labels)} samples")
-            
 
             new_dist = torch.bincount(all_labels)
             print(f"Class distribution: {new_dist.tolist()}")
-        
 
         cls.cached_images = all_images.to(cls.dataset_device)
         cls.cached_labels = all_labels.to(cls.dataset_device)
@@ -127,10 +119,12 @@ class CNN(nn.Module):
         return cls.cached_images, cls.cached_labels
 
     @classmethod
-    def prepare_evaluation_batch(cls, sample_size=None, variation_factor=0.1, seed=None):
+    def prepare_evaluation_batch(
+        cls, sample_size=None, variation_factor=0.1, seed=None
+    ):
         """
         Prepare a consistent evaluation batch to be used for all models in current generation
-        
+
         Args:
             sample_size: Number of samples for evaluation batch
             variation_factor: How much to vary from perfect balance
@@ -142,7 +136,7 @@ class CNN(nn.Module):
         # Set seed if provided for reproducibility
         if seed is not None:
             torch.manual_seed(seed)
-            
+
         if sample_size is None or sample_size >= len(cls.cached_labels):
             cls.eval_images = cls.cached_images
             cls.eval_labels = cls.cached_labels
@@ -154,16 +148,22 @@ class CNN(nn.Module):
 
         samples_per_class = sample_size // num_classes
 
-        variations = torch.FloatTensor(num_classes).uniform_(1-variation_factor, 1+variation_factor)
-        variations = variations * (num_classes / variations.sum())  # Normalize to maintain total
-        
-        samples_per_class_varied = [max(1, int(samples_per_class * v)) for v in variations]
+        variations = torch.FloatTensor(num_classes).uniform_(
+            1 - variation_factor, 1 + variation_factor
+        )
+        variations = variations * (
+            num_classes / variations.sum()
+        )  # Normalize to maintain total
+
+        samples_per_class_varied = [
+            max(1, int(samples_per_class * v)) for v in variations
+        ]
 
         total_samples = sum(samples_per_class_varied)
         if total_samples != sample_size:
 
             diff = sample_size - total_samples
-            indices = torch.randperm(num_classes)[:abs(diff)]
+            indices = torch.randperm(num_classes)[: abs(diff)]
             for idx in indices:
                 samples_per_class_varied[idx] += 1 if diff > 0 else -1
 
@@ -176,7 +176,7 @@ class CNN(nn.Module):
                 selected = class_indices
             else:
                 perm = torch.randperm(len(class_indices))
-                selected = class_indices[perm[:samples_per_class_varied[i]]]
+                selected = class_indices[perm[: samples_per_class_varied[i]]]
             selected_indices.append(selected)
 
         selected_indices = torch.cat(selected_indices)
@@ -254,7 +254,11 @@ class CNN(nn.Module):
 
         self.to(CNN.dataset_device)
 
-        if use_prepared_batch and CNN.eval_images is not None and CNN.eval_labels is not None:
+        if (
+            use_prepared_batch
+            and CNN.eval_images is not None
+            and CNN.eval_labels is not None
+        ):
             eval_images = CNN.eval_images
             eval_labels = CNN.eval_labels
         else:

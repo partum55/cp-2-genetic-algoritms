@@ -142,7 +142,9 @@ class SyncCEA(CellularEvolutionaryAutomata):
     ):
         CNN.prepare_evaluation_batch(
             sample_size=self.training_batch_size,
-            variation_factor=self.variation_rate, seed=self.gen + 1)
+            variation_factor=self.variation_rate,
+            seed=self.gen + 1,
+        )
         new_grid = [[None] * self.width for _ in range(self.height)]
         elite_count = max(1, int(self.width * self.height * elite))
         top_k = sorted(self.fitness_table.items(), key=lambda x: x[1], reverse=True)[
@@ -187,7 +189,9 @@ class AsyncCEA(CellularEvolutionaryAutomata):
     def create_next_gen(self, elite=0.1):
         CNN.prepare_evaluation_batch(
             sample_size=self.training_batch_size,
-            variation_factor=self.variation_rate, seed=self.gen + 1)
+            variation_factor=self.variation_rate,
+            seed=self.gen + 1,
+        )
         k = max(1, int(self.width * self.height * elite))
 
         top_k_heap = [(fitness, coord) for coord, fitness in self.fitness_table.items()]
