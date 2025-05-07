@@ -11,11 +11,18 @@ class CNN(nn.Module):
     cached_labels = None
     batch_size = 128
     dataset_device = None
-    # model_device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     @classmethod
-    def preload_dataset(cls, data_loader):
-        """Preload the entire dataset into memory once for all model instances"""
+    def preload_dataset(cls, data_loader, sample_size=None):
+        """
+        Preload the entire dataset into memory once for all model instances
+        
+        Args:
+            data_loader: PyTorch DataLoader with the dataset
+            sample_size: Optional int or float. If int, number of samples to keep.
+                        If float between 0 and 1, fraction of dataset to keep.
+                        If None, keep all data.
+        """
         if cls.cached_images is not None and cls.cached_labels is not None:
             print("Dataset already preloaded")
             return
@@ -33,14 +40,74 @@ class CNN(nn.Module):
                 all_images.append(images)
                 all_labels.append(labels)
 
-        cls.cached_images = torch.cat(all_images).to(cls.dataset_device)
-        cls.cached_labels = torch.cat(all_labels).to(cls.dataset_device)
+
+        all_images = torch.cat(all_images)
+        all_labels = torch.cat(all_labels)
+        
+
+        if sample_size is not None:
+            original_size = len(all_labels)
+            
+
+            if isinstance(sample_size, float) and 0 < sample_size < 1:
+                sample_size = int(original_size * sample_size)
+            
+
+            if not isinstance(sample_size, int) or sample_size <= 0:
+                raise ValueError("sample_size must be positive int or float between 0 and 1")
+                
+
+            sample_size = min(sample_size, original_size)
+            
+
+            unique_labels = torch.unique(all_labels)
+            num_classes = len(unique_labels)
+            samples_per_class = sample_size // num_classes
+            remaining_samples = sample_size % num_classes
+            
+            sampled_indices = []
+            
+
+            for label in unique_labels:
+                class_indices = torch.where(all_labels == label)[0]
+                
+
+                extra = 1 if remaining_samples > 0 else 0
+                if extra:
+                    remaining_samples -= 1
+                    
+
+                if len(class_indices) <= samples_per_class + extra:
+
+                    selected = class_indices
+                else:
+
+                    perm = torch.randperm(len(class_indices))
+                    selected = class_indices[perm[:samples_per_class + extra]]
+                
+                sampled_indices.append(selected)
+            
+
+            sampled_indices = torch.cat(sampled_indices)
+            
+
+            all_images = all_images[sampled_indices]
+            all_labels = all_labels[sampled_indices]
+            
+            print(f"Reduced dataset from {original_size} to {len(all_labels)} samples")
+            
+
+            new_dist = torch.bincount(all_labels)
+            print(f"Class distribution: {new_dist.tolist()}")
+        
+
+        cls.cached_images = all_images.to(cls.dataset_device)
+        cls.cached_labels = all_labels.to(cls.dataset_device)
 
         print(
             f"Dataset preloaded: {len(cls.cached_labels)} samples in {time.time() - start:.2f} seconds"
         )
         return cls.cached_images, cls.cached_labels
-
     def __init__(self, small=False):
         super(CNN, self).__init__()
         if not small:
