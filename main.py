@@ -62,7 +62,7 @@ def cellular_genetic_training(
     # Set up the CNN cashed dataset and device
     CNN.dataset_device = device
     CNN.batch_size = batch_size  # Set the batch size for the dataset
-    CNN.preload_dataset(train_loader)
+    CNN.preload_dataset(train_loader, sample_size=0.0113)
 
     with open(filename, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -169,7 +169,7 @@ if __name__ == "__main__":
         ],
         selection_type="roulette",
         wrapped=True,
-        small_mnist=True,
+        small_mnist=False,
         epochs=1000,
         batch_size=64,
     )
