@@ -1,7 +1,7 @@
+import torch
+from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import v2
-from torch.utils.data import DataLoader
-import torch
 
 transform = v2.Compose(
     [
@@ -13,7 +13,10 @@ transform = v2.Compose(
 # mean and std are calculated for MNIST dataset
 
 train_dataset = datasets.MNIST(
-    root="./data", train=True, download=True, transform=transform,
+    root="./data",
+    train=True,
+    download=True,
+    transform=transform,
 )
 train_dataset = torch.utils.data.Subset(train_dataset, range(50000))
 test_dataset = datasets.MNIST(
@@ -21,6 +24,9 @@ test_dataset = datasets.MNIST(
 )
 test_dataset = torch.utils.data.Subset(test_dataset, range(10000))
 
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=3, pin_memory=True)
-test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=3, pin_memory=True)
-
+train_loader = DataLoader(
+    train_dataset, batch_size=64, shuffle=True, num_workers=3, pin_memory=True
+)
+test_loader = DataLoader(
+    test_dataset, batch_size=64, shuffle=False, num_workers=3, pin_memory=True
+)
