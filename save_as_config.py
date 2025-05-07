@@ -245,7 +245,7 @@ if __name__ == "__main__":
     print("Starting training and saving models with configurations...")
 
     # Set parameters for training
-    num_epochs = 200  # Increased from default 5
+    num_epochs = 100  # Increased from default 5
     grid_size = 16  # Increased from default 3
 
     # Train and save standard CNN model

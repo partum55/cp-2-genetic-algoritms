@@ -27,34 +27,26 @@ os.makedirs("saved_models", exist_ok=True)
 # Load pre-trained models
 def load_models():
     models = {}
-    model_metrics = {}
 
-    # Try to load metrics
-    try:
-        metrics_path = os.path.join('static', 'model_metrics.json')
-        if os.path.exists(metrics_path):
-            with open(metrics_path, 'r') as f:
-                model_metrics = json.load(f)
-                print("Loaded model metrics from file")
-    except Exception as e:
-        print(f"Warning: Could not load metrics: {e}")
-        model_metrics = {}
+    # Create directory for saved models if it doesn't exist
+    os.makedirs("saved_models", exist_ok=True)
 
+    # Attempt to load each model individually
     try:
         # Load standard CNN model
-        cnn_model = CNN(device).to(device)
+        cnn_model = CNN().to(device)
         cnn_model.load_state_dict(torch.load('saved_models/cnn_model.pth', map_location=device))
         models['cnn'] = cnn_model
         print("Loaded CNN model")
 
         # Load best SyncCEA model
-        sync_cea_model = CNN(device).to(device)
+        sync_cea_model = CNN().to(device)
         sync_cea_model.load_state_dict(torch.load('saved_models/sync_cea_best.pth', map_location=device))
         models['syncCEA'] = sync_cea_model
         print("Loaded SyncCEA model")
 
         # Load best AsyncCEA model
-        async_cea_model = CNN(device).to(device)
+        async_cea_model = CNN().to(device)
         async_cea_model.load_state_dict(torch.load('saved_models/async_cea_best.pth', map_location=device))
         models['asyncCEA'] = async_cea_model
         print("Loaded AsyncCEA model")
@@ -63,16 +55,16 @@ def load_models():
         print(f"Warning: {e}")
         print("Using random models for demonstration.")
 
-        # For demonstration, create random models if saved ones are not found
-        models['cnn'] = CNN.create_random_model(device)
-        models['syncCEA'] = CNN.create_random_model(device)
-        models['asyncCEA'] = CNN.create_random_model(device)
+        # Create correctly randomized models if saved ones are not found
+        models['cnn'] = CNN.create_random_model(CNN, device)
+        models['syncCEA'] = CNN.create_random_model(CNN, device)
+        models['asyncCEA'] = CNN.create_random_model(CNN, device)
 
-    return models, model_metrics
+    return models
 
 
 # Initialize models
-models, model_metrics = load_models()
+models = load_models()
 
 
 # Preprocess the image
@@ -160,9 +152,9 @@ def health_check():
     })
 
 
-@app.route('/api/model_metrics', methods=['GET'])
-def get_model_metrics():
-    return jsonify(model_metrics)
+# @app.route('/api/model_metrics', methods=['GET'])
+# def get_model_metrics():
+#     return jsonify(model_metrics)
 
 # Run the Flask app
 if __name__ == '__main__':
