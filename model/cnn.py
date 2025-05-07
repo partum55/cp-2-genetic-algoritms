@@ -11,9 +11,11 @@ class CNN(nn.Module):
     cached_labels = None
     batch_size = 128
     dataset_device = None
-
+    training_batch_size = None
+    eval_images = None
+    eval_labels = None
     @classmethod
-    def preload_dataset(cls, data_loader, sample_size=None):
+    def preload_dataset(cls, data_loader, sample_size=None, variation_factor=0.05):
         """
         Preload the entire dataset into memory once for all model instances
         
@@ -62,28 +64,43 @@ class CNN(nn.Module):
 
             unique_labels = torch.unique(all_labels)
             num_classes = len(unique_labels)
-            samples_per_class = sample_size // num_classes
-            remaining_samples = sample_size % num_classes
+            base_samples_per_class = sample_size // num_classes
             
-            sampled_indices = []
+    
+            variations = torch.FloatTensor(num_classes).uniform_(1-variation_factor, 1+variation_factor)
+
+            variations = variations * (num_classes / variations.sum())
             
 
-            for label in unique_labels:
-                class_indices = torch.where(all_labels == label)[0]
+            samples_per_class_varied = [int(base_samples_per_class * v) for v in variations]
+            
+
+            total_selected = sum(samples_per_class_varied)
+            difference = sample_size - total_selected
+            
+
+            indices_to_adjust = torch.randperm(num_classes)[:abs(difference)]
+            for idx in indices_to_adjust:
+                samples_per_class_varied[idx] += 1 if difference > 0 else -1
                 
 
-                extra = 1 if remaining_samples > 0 else 0
-                if extra:
-                    remaining_samples -= 1
-                    
+            min_samples = max(1, base_samples_per_class // 4)
+            for i in range(len(samples_per_class_varied)):
+                if samples_per_class_varied[i] < min_samples:
+                    samples_per_class_varied[i] = min_samples
+            
+            sampled_indices = []
+            for i,label in enumerate(unique_labels):
+                class_indices = torch.where(all_labels == label)[0]
+                target_samples = samples_per_class_varied[i]
 
-                if len(class_indices) <= samples_per_class + extra:
+                if len(class_indices) <= target_samples:
 
                     selected = class_indices
                 else:
 
                     perm = torch.randperm(len(class_indices))
-                    selected = class_indices[perm[:samples_per_class + extra]]
+                    selected = class_indices[perm[:target_samples]]
                 
                 sampled_indices.append(selected)
             
@@ -108,6 +125,72 @@ class CNN(nn.Module):
             f"Dataset preloaded: {len(cls.cached_labels)} samples in {time.time() - start:.2f} seconds"
         )
         return cls.cached_images, cls.cached_labels
+
+    @classmethod
+    def prepare_evaluation_batch(cls, sample_size=None, variation_factor=0.1, seed=None):
+        """
+        Prepare a consistent evaluation batch to be used for all models in current generation
+        
+        Args:
+            sample_size: Number of samples for evaluation batch
+            variation_factor: How much to vary from perfect balance
+            seed: Random seed for reproducibility
+        """
+        if cls.cached_images is None or cls.cached_labels is None:
+            raise ValueError("Dataset not preloaded. Call CNN.preload_dataset() first.")
+        # print(f"Preparing evaluation batch with sample size: {sample_size}")
+        # Set seed if provided for reproducibility
+        if seed is not None:
+            torch.manual_seed(seed)
+            
+        if sample_size is None or sample_size >= len(cls.cached_labels):
+            cls.eval_images = cls.cached_images
+            cls.eval_labels = cls.cached_labels
+            return
+
+        all_labels = cls.cached_labels
+        unique_labels = torch.unique(all_labels)
+        num_classes = len(unique_labels)
+
+        samples_per_class = sample_size // num_classes
+
+        variations = torch.FloatTensor(num_classes).uniform_(1-variation_factor, 1+variation_factor)
+        variations = variations * (num_classes / variations.sum())  # Normalize to maintain total
+        
+        samples_per_class_varied = [max(1, int(samples_per_class * v)) for v in variations]
+
+        total_samples = sum(samples_per_class_varied)
+        if total_samples != sample_size:
+
+            diff = sample_size - total_samples
+            indices = torch.randperm(num_classes)[:abs(diff)]
+            for idx in indices:
+                samples_per_class_varied[idx] += 1 if diff > 0 else -1
+
+        selected_indices = []
+        for i, label in enumerate(unique_labels):
+
+            class_indices = torch.where(all_labels == label)[0]
+
+            if len(class_indices) <= samples_per_class_varied[i]:
+                selected = class_indices
+            else:
+                perm = torch.randperm(len(class_indices))
+                selected = class_indices[perm[:samples_per_class_varied[i]]]
+            selected_indices.append(selected)
+
+        selected_indices = torch.cat(selected_indices)
+        perm = torch.randperm(len(selected_indices))
+        selected_indices = selected_indices[perm]
+
+        cls.eval_images = cls.cached_images[selected_indices]
+        cls.eval_labels = cls.cached_labels[selected_indices]
+
+        # new_dist = torch.bincount(cls.eval_labels)
+        # print(f"Class distribution: {new_dist.tolist()}")
+        if seed is not None:
+            torch.manual_seed(torch.initial_seed())
+
     def __init__(self, small=False):
         super(CNN, self).__init__()
         if not small:
@@ -158,8 +241,10 @@ class CNN(nn.Module):
 
         return x
 
-    def evaluate_cached(self, verbose=False):
-        """Evaluate the model using the class-level preloaded dataset"""
+    def evaluate_cached(self, verbose=False, use_prepared_batch=True):
+        """
+        Evaluate using the prepared evaluation batch for consistency within a generation
+        """
         if CNN.cached_images is None or CNN.cached_labels is None:
             raise ValueError("Dataset not preloaded. Call CNN.preload_dataset() first.")
 
@@ -167,18 +252,25 @@ class CNN(nn.Module):
             print("Evaluating model (using cached data)...")
             start = time.time()
 
-        # Move model to the same device as the dataset
         self.to(CNN.dataset_device)
+
+        if use_prepared_batch and CNN.eval_images is not None and CNN.eval_labels is not None:
+            eval_images = CNN.eval_images
+            eval_labels = CNN.eval_labels
+        else:
+            # Fall back to using full dataset
+            eval_images = CNN.cached_images
+            eval_labels = CNN.cached_labels
 
         self.eval()
         correct = 0
         total = 0
 
         with torch.no_grad():
-            # Process in batches to avoid memory issues with larger datasets
-            for i in range(0, len(CNN.cached_labels), CNN.batch_size):
-                batch_images = CNN.cached_images[i : i + CNN.batch_size]
-                batch_labels = CNN.cached_labels[i : i + CNN.batch_size]
+            # Process in batches to avoid memory issues
+            for i in range(0, len(eval_labels), CNN.batch_size):
+                batch_images = eval_images[i : i + CNN.batch_size]
+                batch_labels = eval_labels[i : i + CNN.batch_size]
 
                 outputs = self(batch_images)
                 _, predicted = torch.max(outputs, 1)
@@ -186,10 +278,14 @@ class CNN(nn.Module):
                 correct += (predicted == batch_labels).sum().item()
                 total += batch_labels.size(0)
 
-        if verbose:
-            print(f"Fast evaluation time: {time.time() - start:.2f} seconds")
+        accuracy = 100 * correct / total
 
-        return 100 * correct / total
+        if verbose:
+            data_desc = f"sampled {total}" if sample_size else "full dataset"
+            print(f"Accuracy on {data_desc}: {accuracy:.2f}%")
+            print(f"Evaluation time: {time.time() - start:.2f} seconds")
+
+        return accuracy
 
     def final_evaluate(self, test_loader, verbose=False):
         """

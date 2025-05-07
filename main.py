@@ -17,6 +17,7 @@ def cellular_genetic_training(
     small_mnist=False,
     epochs=100,
     batch_size=64,
+    training_batch_size=500,
     save_model=True,
 ):
     """
@@ -62,7 +63,9 @@ def cellular_genetic_training(
     # Set up the CNN cashed dataset and device
     CNN.dataset_device = device
     CNN.batch_size = batch_size  # Set the batch size for the dataset
-    CNN.preload_dataset(train_loader, sample_size=0.0113)
+    ### for BIG MNIST dataset train_loader has 50000, san
+    CNN.preload_dataset(train_loader, sample_size=0.04)
+    CNN.prepare_evaluation_batch(sample_size=training_batch_size, variation_factor=0.05, seed=0)
 
     with open(filename, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -76,6 +79,8 @@ def cellular_genetic_training(
                 neighborhood_type,
                 selection_type,
                 small_mnist=small_mnist,
+                training_batch_size = training_batch_size,
+                variation_factor=0.05,
             )
         else:
             automat = AsyncCEA(
@@ -83,6 +88,8 @@ def cellular_genetic_training(
                 neighborhood_type,
                 selection_type,
                 small_mnist=small_mnist,
+                training_batch_size = training_batch_size,
+                variation_factor=0.05,
             )
 
         # Run the algorithm for the specified number of epochs

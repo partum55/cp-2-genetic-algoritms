@@ -11,10 +11,14 @@ class CellularEvolutionaryAutomata(ABC):
         grid_size,
         neighborhood_type: list,
         selection_type,
+        training_batch_size=None,
+        variation_factor=0.05,
         wrapped=True,
         small_mnist=False,
     ):
         self.small_mnist = small_mnist
+        self.training_batch_size = training_batch_size
+        self.variation_rate = variation_factor
         self.grid = self.create_grid_population(grid_size)
         self.width = grid_size
         self.height = grid_size
@@ -136,6 +140,9 @@ class SyncCEA(CellularEvolutionaryAutomata):
         elite_mutation_rate=0.04,
         elite_mutation_scale=1,
     ):
+        CNN.prepare_evaluation_batch(
+            sample_size=self.training_batch_size,
+            variation_factor=self.variation_rate, seed=self.gen + 1)
         new_grid = [[None] * self.width for _ in range(self.height)]
         elite_count = max(1, int(self.width * self.height * elite))
         top_k = sorted(self.fitness_table.items(), key=lambda x: x[1], reverse=True)[
@@ -163,11 +170,11 @@ class SyncCEA(CellularEvolutionaryAutomata):
                     new_grid[y][x] = child
 
         self.grid = new_grid
-        self.gen += 1
         elite_fitness = {
             coord: self.fitness_table[coord] for coord in top_k_coordinates
         }
         self.fitness_table = self.create_fitness_hash_map(reuse=elite_fitness)
+        self.gen += 1
         return (
             self.get_best_train_fitness(),
             self.get_worst_train_fitness(),
@@ -178,6 +185,9 @@ class SyncCEA(CellularEvolutionaryAutomata):
 class AsyncCEA(CellularEvolutionaryAutomata):
 
     def create_next_gen(self, elite=0.1):
+        CNN.prepare_evaluation_batch(
+            sample_size=self.training_batch_size,
+            variation_factor=self.variation_rate, seed=self.gen + 1)
         k = max(1, int(self.width * self.height * elite))
 
         top_k_heap = [(fitness, coord) for coord, fitness in self.fitness_table.items()]
@@ -202,7 +212,6 @@ class AsyncCEA(CellularEvolutionaryAutomata):
                     heapq.heappop(top_k_heap)
                     heapq.heappush(top_k_heap, (child_fitness, coord))
                     top_k_coords_set = {coord for _, coord in top_k_heap}
-
         self.gen += 1
         return (
             self.get_best_train_fitness(),
