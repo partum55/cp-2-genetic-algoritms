@@ -4,32 +4,33 @@
  */
 class ModelManager {
     constructor() {
+        // Default model information, will be replaced with real metrics if available
         this.models = {
             cnn: {
                 name: 'Standard CNN',
                 description: 'Standard Convolutional Neural Network trained with Adam optimizer.',
                 stats: {
-                    accuracy: '98.2%',
+                    accuracy: 'Loading...',
                     parameters: '1.3M',
-                    epochs: '20'
+                    epochs: 'Loading...'
                 }
             },
             syncCEA: {
                 name: 'Sync CEA',
                 description: 'Synchronous Cellular Evolutionary Automata - evolves a population of CNNs simultaneously.',
                 stats: {
-                    accuracy: '97.5%',
+                    accuracy: 'Loading...',
                     parameters: '1.2M',
-                    generations: '50'
+                    generations: 'Loading...'
                 }
             },
             asyncCEA: {
                 name: 'Async CEA',
                 description: 'Asynchronous Cellular Evolutionary Automata - evolves a population of CNNs cell by cell.',
                 stats: {
-                    accuracy: '96.8%',
+                    accuracy: 'Loading...',
                     parameters: '1.1M',
-                    generations: '45'
+                    generations: 'Loading...'
                 }
             }
         };
@@ -40,9 +41,59 @@ class ModelManager {
         this.allPredictions = {};
         this.isComparisonMode = false;
 
+        // Load real metrics from server
+        this.loadRealMetrics();
+
         // Initialize model selection
         this.setupModelSelection();
         this.setupRecognizeButtons();
+    }
+
+    loadRealMetrics() {
+        fetch('http://localhost:5000/api/model_metrics')
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Failed to load model metrics');
+            })
+            .then(metrics => {
+                // Update models with real metrics if available
+                if (metrics && Object.keys(metrics).length > 0) {
+                    this.models = metrics;
+
+                    // Update the display on the page
+                    this.updateModelMetricsDisplay();
+                    console.log('Loaded real model metrics');
+                }
+            })
+            .catch(error => {
+                console.warn('Using default metrics:', error);
+            });
+    }
+
+    updateModelMetricsDisplay() {
+        // Update stats display for each model on the page
+        for (const [modelType, modelData] of Object.entries(this.models)) {
+            // Update statistics in model details section
+            const modelStats = document.querySelectorAll(`#${modelType}-desc .stat-value`);
+            if (modelStats.length >= 3) {
+                modelStats[0].textContent = modelData.stats.accuracy;
+                modelStats[1].textContent = modelData.stats.parameters;
+
+                // Check if it's epochs or generations
+                if ('epochs' in modelData.stats) {
+                    modelStats[2].textContent = modelData.stats.epochs;
+                } else if ('generations' in modelData.stats) {
+                    modelStats[2].textContent = modelData.stats.generations;
+                }
+            }
+        }
+
+        // If we're already on the comparison page and have predictions, update them too
+        if (this.isComparisonMode && Object.keys(this.allPredictions).length > 0) {
+            this.displayComparisonResults();
+        }
     }
 
     setupModelSelection() {
@@ -300,6 +351,20 @@ class ModelManager {
     }
 
     getMockResponse(modelType) {
+        // Get real accuracy from model metrics for more realistic demo
+        let baseAccuracy = 0;
+        try {
+            const accuracyStr = this.models[modelType].stats.accuracy;
+            baseAccuracy = parseFloat(accuracyStr.replace('%', ''));
+            if (isNaN(baseAccuracy)) {
+                baseAccuracy = modelType === 'cnn' ? 95 :
+                               modelType === 'syncCEA' ? 90 : 85;
+            }
+        } catch (e) {
+            baseAccuracy = modelType === 'cnn' ? 95 :
+                          modelType === 'syncCEA' ? 90 : 85;
+        }
+
         // Generate a digit (weighted toward lower digits for realism)
         const weights = [0.2, 0.15, 0.15, 0.12, 0.1, 0.08, 0.07, 0.05, 0.05, 0.03];
         const random = Math.random();
@@ -317,40 +382,39 @@ class ModelManager {
         // Generate confidence scores with higher confidence for the predicted digit
         const confidences = Array(10).fill(0).map(() => Math.random() * 5);
 
-        // Add model variation
-        let baseConfidence = 0;
+        // Add model variation based on actual metrics
+        let confidenceLevel = 0;
+
         if (modelType === 'cnn') {
-            baseConfidence = 85 + Math.random() * 10;
+            confidenceLevel = baseAccuracy - 10 + Math.random() * 10; // Slightly below accuracy
         } else if (modelType === 'syncCEA') {
-            // Make syncCEA slightly less confident
-            baseConfidence = 80 + Math.random() * 15;
+            confidenceLevel = baseAccuracy - 15 + Math.random() * 15;
 
             // 20% chance it predicts a different digit
             if (Math.random() < 0.2) {
                 const newDigit = (digit + 1) % 10;
-                confidences[newDigit] = baseConfidence;
-                confidences[digit] = 70 + Math.random() * 10;
+                confidences[newDigit] = confidenceLevel;
+                confidences[digit] = confidenceLevel - 10 + Math.random() * 10;
                 digit = newDigit;
             } else {
-                confidences[digit] = baseConfidence;
+                confidences[digit] = confidenceLevel;
             }
         } else {
-            // asyncCEA is less confident
-            baseConfidence = 75 + Math.random() * 15;
+            confidenceLevel = baseAccuracy - 20 + Math.random() * 15;
 
             // 30% chance it predicts a different digit
             if (Math.random() < 0.3) {
                 const newDigit = (digit + 1) % 10;
-                confidences[newDigit] = baseConfidence;
-                confidences[digit] = 65 + Math.random() * 15;
+                confidences[newDigit] = confidenceLevel;
+                confidences[digit] = confidenceLevel - 15 + Math.random() * 15;
                 digit = newDigit;
             } else {
-                confidences[digit] = baseConfidence;
+                confidences[digit] = confidenceLevel;
             }
         }
 
-        if (confidences[digit] < baseConfidence) {
-            confidences[digit] = baseConfidence;
+        if (confidences[digit] < confidenceLevel) {
+            confidences[digit] = confidenceLevel;
         }
 
         return {

@@ -6,6 +6,7 @@ from PIL import Image
 import io
 import base64
 import re
+import json
 import os
 
 # Import the required model classes
@@ -26,6 +27,18 @@ os.makedirs("saved_models", exist_ok=True)
 # Load pre-trained models
 def load_models():
     models = {}
+    model_metrics = {}
+
+    # Try to load metrics
+    try:
+        metrics_path = os.path.join('static', 'model_metrics.json')
+        if os.path.exists(metrics_path):
+            with open(metrics_path, 'r') as f:
+                model_metrics = json.load(f)
+                print("Loaded model metrics from file")
+    except Exception as e:
+        print(f"Warning: Could not load metrics: {e}")
+        model_metrics = {}
 
     try:
         # Load standard CNN model
@@ -55,11 +68,11 @@ def load_models():
         models['syncCEA'] = CNN.create_random_model(device)
         models['asyncCEA'] = CNN.create_random_model(device)
 
-    return models
+    return models, model_metrics
 
 
 # Initialize models
-models = load_models()
+models, model_metrics = load_models()
 
 
 # Preprocess the image
@@ -146,6 +159,10 @@ def health_check():
         'device': str(device)
     })
 
+
+@app.route('/api/model_metrics', methods=['GET'])
+def get_model_metrics():
+    return jsonify(model_metrics)
 
 # Run the Flask app
 if __name__ == '__main__':
