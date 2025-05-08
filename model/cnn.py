@@ -284,8 +284,6 @@ class CNN(nn.Module):
         accuracy = 100 * correct / total
 
         if verbose:
-            data_desc = f"sampled {total}" if sample_size else "full dataset"
-            print(f"Accuracy on {data_desc}: {accuracy:.2f}%")
             print(f"Evaluation time: {time.time() - start:.2f} seconds")
 
         return accuracy
