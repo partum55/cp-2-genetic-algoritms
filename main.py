@@ -65,9 +65,10 @@ def parse_args():
     parser.add_argument(
         "--model_name",
         type=str,
+        required=True,
         default="best_cea",
-        help="Name of the model to save (default: best_cea)",
-    )
+        help="Name of the model to save (default: best_cea)"
+)
     parser.add_argument(
         "--wrapped", action="store_true", help="Wrap grid edges for genetic algorithm"
     )
@@ -333,6 +334,7 @@ def main():
                 training_batch_size=args.training_batch_size,
                 save_model=args.save_model,
                 sample_size=args.sample_size,
+                model_name=args.model_name,
             )
     finally:
         anim.stop()
