@@ -286,3 +286,54 @@ def mutate(model, mutation_rate=0.1, scale=0.15):
             if torch.rand(1) < mutation_rate:
                 param.data += scale * torch.randn_like(param)
     return model
+
+def improved_mutate(model, mutation_rate=0.1, scale=0.15, fitness_rank=None, total_ranks=None):
+    """
+    A more thoughtful mutation strategy for neural networks
+    
+    Args:
+        model: The neural network model to mutate
+        mutation_rate: Base mutation probability per parameter
+        scale: Base scale for mutations
+        fitness_rank: Rank of this model in the population (1 = best)
+        total_ranks: Total number of ranks in the population
+    """
+    # Apply adaptive mutation if fitness information is available
+    if fitness_rank is not None and total_ranks is not None:
+        # Scale mutation rate and scale based on fitness rank
+        # Lower fitness = higher mutation rate and scale
+        fitness_factor = (fitness_rank / total_ranks) * 1.5  # 0.0-1.5 range
+        mutation_rate = mutation_rate * (1 + fitness_factor)
+        scale = scale * (1 + fitness_factor * 0.5)
+    
+    # Layer-specific factors
+    layer_factors = {
+        'conv1': 0.7,  # Early layers - more sensitive, mutate less
+        'conv2': 0.9,
+        'bn1': 0.5,    # Batch norm layers - very sensitive
+        'bn2': 0.5,
+        'fc1': 1.2,    # Hidden layers - mutate more
+        'fc2': 1.5     # Output layer - mutate most
+    }
+
+    for name, param in model.named_parameters():
+        # Extract layer name
+        layer_name = name.split('.')[0]
+        
+        # Get layer-specific mutation factor
+        factor = layer_factors.get(layer_name, 1.0)
+        
+        # Calculate effective mutation rate
+        effective_rate = mutation_rate * factor
+        
+        # Different mutation for weights vs biases
+        if 'weight' in name:
+            if torch.rand(1) < effective_rate:
+                # For weights, apply scaled noise
+                param.data += scale * torch.randn_like(param)
+        elif 'bias' in name:
+            if torch.rand(1) < effective_rate * 0.7:  # Lower rate for biases
+                # For biases, apply smaller mutations
+                param.data += scale * 0.5 * torch.randn_like(param)
+    
+    return model

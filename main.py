@@ -53,7 +53,7 @@ def parse_args():
     "--neighborhood",
     type=str,
     required=True,
-    help="Neighborhood matrix as string (e.g. '[[0,1,0],[1,2,1],[0,1,0]]') or preset name (m1, m2, c1, c2, fn1, fn2)"
+    help="Neighborhood matrix as string (e.g. '[[0,1,0],[1,2,1],[0,1,0]]') or preset name (m1, m2, c1, c2, vn1, vn2)"
 )
     parser.add_argument(
         "--selection",
@@ -97,6 +97,13 @@ def parse_args():
         help="Sample size for genetic evaluation (default: 1)",
     )
 
+    parser.add_argument(
+        "--mutation_method",
+        type=str,
+        default='gaussian',
+        help="Mutation method for genetic algorithm ('gaussian', 'layer') (default: 'gaussian' )",
+    )
+
     args = parser.parse_args()
 
     # Validate arguments
@@ -129,6 +136,7 @@ def cellular_genetic_training(
     save_model=True,
     sample_size=1,
     model_name="best_model.pth",
+    mutation_method="gaussian",
 ):
     """
     Run the Cellular Genetic Algorithm with the specified parameters.
@@ -193,6 +201,7 @@ def cellular_genetic_training(
                 small_mnist=small_mnist,
                 training_batch_size=training_batch_size,
                 variation_factor=0.05,
+                mutation_type=mutation_method,
             )
         else:
             automat = AsyncCEA(
@@ -202,6 +211,7 @@ def cellular_genetic_training(
                 small_mnist=small_mnist,
                 training_batch_size=training_batch_size,
                 variation_factor=0.05,
+                mutation_type=mutation_method,
             )
 
         # Run the algorithm for the specified number of epochs
@@ -217,11 +227,10 @@ def cellular_genetic_training(
             f"Final test result on {automat.gen} is {best_model.final_evaluate(test_loader)}"
         )
     if save_model:
-        model_name = "best_sync_cea" if synchronous else "best_async_cea"
         model_path = f"saved_models/{model_name}.pth"
         ensure_dir("saved_models")
-        torch.save(best_model.state_dict(), "saved_models/cnn_model.pth")
-        print("CNN model saved to saved_models/cnn_model.pth")
+        torch.save(best_model.state_dict(), model_path)
+        print("CNN model saved to saved_models with name:", model_name)
     return best_model
 
 
@@ -335,6 +344,7 @@ def main():
                 save_model=args.save_model,
                 sample_size=args.sample_size,
                 model_name=args.model_name,
+                mutation_method=args.mutation_method,
             )
     finally:
         anim.stop()
