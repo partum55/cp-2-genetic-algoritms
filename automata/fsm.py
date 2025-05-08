@@ -17,7 +17,9 @@ class CellularEvolutionaryAutomata(ABC):
         variation_factor=0.05,
         wrapped=True,
         small_mnist=False,
+        mutation_type='gaussian',
     ):
+        self.mutation_type = self.get_mutation_type(mutation_type)
         self.small_mnist = small_mnist
         self.training_batch_size = training_batch_size
         self.variation_rate = variation_factor
@@ -26,7 +28,7 @@ class CellularEvolutionaryAutomata(ABC):
         self.width = grid_size
         self.height = grid_size
         self.fitness_table = self.create_fitness_hash_map()
-        self.neighborhood_deltas = self.get_neighborhood_deltas(neighborhood_type)
+        self.neighborhood_deltas = self.get_neighborhood_deltas(self.get_neighborhood_type(neighborhood_type))
         self.wrapped = wrapped
         self.selection_method = self.get_selection_method(selection_type)
         self.gen = 0
@@ -42,6 +44,12 @@ class CellularEvolutionaryAutomata(ABC):
             "Grid size must be an integer greater than or equal to 5."
         )
 
+    def get_mutation_type(self, mutation_type):
+        if mutation_type == 'gaussian':
+            return mutate
+        if mutation_type == 'layer':
+            return improved_mutate
+        raise ValueError("No such mutation type.")
     def get_neighborhood_type(self, neighborhood_type):
         if neighborhood_type.lower() in ['m1', 'm2', 'c1', 'c2', 'fn1', 'fn2']:
             if neighborhood_type == "m1":
@@ -54,13 +62,13 @@ class CellularEvolutionaryAutomata(ABC):
                     [1, 1, 1, 1, 1],
                     [1, 1, 1, 1, 1]
                 ]
-            if neighborhood_type == "fn1":
+            if neighborhood_type == "vn1":
                 return [
                     [0, 1, 0],
                     [1, 2, 1],
                     [0, 1, 0],
                 ]
-            if neighborhood_type == "fn2":
+            if neighborhood_type == "vn2":
                 return [
                     [0, 0, 1, 0, 0],
                     [0, 1, 1, 1, 0],
@@ -196,7 +204,7 @@ class CellularEvolutionaryAutomata(ABC):
 
         parent_1, parent_2 = self.selection_method(neighborhood, neighborhood_fitness)
         child = self.cross_over_method(parent_1, parent_2, self.small_mnist)
-        child = mutate(child)
+        child = self.mutation_type(child)
         return child
 
     @abstractmethod
@@ -207,9 +215,6 @@ class SyncCEA(CellularEvolutionaryAutomata):
     def create_next_gen(
         self,
         elite=0.1,
-        mutate_elite_fraction=0.5,
-        elite_mutation_rate=0.04,
-        elite_mutation_scale=1,
     ):
         CNN.prepare_evaluation_batch(
             sample_size=self.training_batch_size,
@@ -223,29 +228,17 @@ class SyncCEA(CellularEvolutionaryAutomata):
         ]
         top_k_coordinates = [x[0] for x in top_k]
 
-        num_to_mutate = int(elite_count * mutate_elite_fraction)
-        mutate_elite_coords = set(top_k_coordinates[-num_to_mutate:])
 
         for y in range(self.height):
             for x in range(self.width):
                 coord = (y, x)
                 if coord in top_k_coordinates:
-                    model = self.grid[y][x]
-                    if coord in mutate_elite_coords:
-                        model = mutate(
-                            model,
-                            mutation_rate=elite_mutation_rate,
-                            scale=elite_mutation_scale,
-                        )
-                    new_grid[y][x] = model
+                    new_grid[y][x] = self.grid[y][x]
                 else:
                     child = self.get_child_from_cell(coord)
                     new_grid[y][x] = child
 
         self.grid = new_grid
-        elite_fitness = {
-            coord: self.fitness_table[coord] for coord in top_k_coordinates
-        }
         self.fitness_table = self.create_fitness_hash_map()
         self.gen += 1
         return (
