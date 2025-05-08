@@ -249,6 +249,35 @@ def crossover_two_point(parent1, parent2, small):
 
     return child
 
+def crossover_one_point(parent1, parent2, small):
+    child = CNN(small).to(CNN.dataset_device)
+    for child_param, param1, param2 in zip(
+        child.parameters(), parent1.parameters(), parent2.parameters()
+    ):
+        # Flatten parameters
+        flat1 = param1.data.view(-1)
+        flat2 = param2.data.view(-1)
+        length = flat1.size(0)
+
+        if length < 2:
+            # Not enough data for one-point crossover, just pick one
+            child_param.data.copy_(
+                param1.data if torch.rand(1).item() > 0.5 else param2.data
+            )
+            continue
+
+        # Select crossover point
+        point = random.randint(0, length - 1)
+
+        # Create child flat tensor
+        child_flat = torch.empty_like(flat1)
+        child_flat[:point] = flat1[:point]
+        child_flat[point:] = flat2[point:]
+
+        # Reshape and copy to child
+        child_param.data.copy_(child_flat.view_as(param1.data))
+
+    return child
 
 def mutate(model, mutation_rate=0.1, scale=0.15):
     for name, param in model.named_parameters():

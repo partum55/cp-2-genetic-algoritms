@@ -11,6 +11,7 @@ class CellularEvolutionaryAutomata(ABC):
         grid_size,
         neighborhood_type: list,
         selection_type,
+        cross_over_method='two_point',
         training_batch_size=None,
         variation_factor=0.05,
         wrapped=True,
@@ -19,6 +20,7 @@ class CellularEvolutionaryAutomata(ABC):
         self.small_mnist = small_mnist
         self.training_batch_size = training_batch_size
         self.variation_rate = variation_factor
+        self.cross_over_method = self.get_cross_over_method(cross_over_method)
         self.grid = self.create_grid_population(grid_size)
         self.width = grid_size
         self.height = grid_size
@@ -60,6 +62,20 @@ class CellularEvolutionaryAutomata(ABC):
         if selection_type == "roulette":
             return selection_roulette
         raise ValueError("No such selection method.")
+
+    @staticmethod
+    def get_cross_over_method(cross_over_method):
+        if cross_over_method == "two_point":
+            return crossover_two_point
+        if cross_over_method == "blend":
+            return crossover_blend
+        if cross_over_method == "mask":
+            return crossover_mask
+        if cross_over_method == "simple":
+            return crossover
+        if cross_over_method == 'one_point':
+            return crossover_one_point
+        raise ValueError("No such crossover method.")
 
     def get_neighborhood_wrapped(self, cell_pos):
         start_y, start_x = cell_pos
@@ -121,7 +137,7 @@ class CellularEvolutionaryAutomata(ABC):
         neighborhood = [self.grid[pos[0]][pos[1]] for pos in neighborhood_positions]
 
         parent_1, parent_2 = self.selection_method(neighborhood, neighborhood_fitness)
-        child = crossover_two_point(parent_1, parent_2, self.small_mnist)
+        child = self.cross_over_method(parent_1, parent_2, self.small_mnist)
         child = mutate(child)
         return child
 
