@@ -7,54 +7,96 @@ import time
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Train a model using Adam or Genetic Algorithm")
-    
+    parser = argparse.ArgumentParser(
+        description="Train a model using Adam or Genetic Algorithm"
+    )
+
     # Basic arguments
-    parser.add_argument('--method', type=str, required=True, 
-                        choices=['adam', 'genetic'], 
-                        help="Training method: 'adam' or 'genetic'")
-    parser.add_argument('--save_model', action='store_true', 
-                        help="Save the trained model")
-    parser.add_argument('--small_mnist', action='store_true', 
-                        help="Use small MNIST dataset")
-    
+    parser.add_argument(
+        "--method",
+        type=str,
+        required=True,
+        choices=["adam", "genetic"],
+        help="Training method: 'adam' or 'genetic'",
+    )
+    parser.add_argument(
+        "--save_model", action="store_true", help="Save the trained model"
+    )
+    parser.add_argument(
+        "--small_mnist", action="store_true", help="Use small MNIST dataset"
+    )
+
     # Arguments for Adam
-    parser.add_argument('--adam_epochs', type=int, default=20, 
-                        help="Epochs for Adam training (default: 20)")
-    parser.add_argument('--adam_batch_size', type=int, default=64, 
-                        help="Batch size for Adam (default: 64)")
-    
+    parser.add_argument(
+        "--adam_epochs",
+        type=int,
+        default=20,
+        help="Epochs for Adam training (default: 20)",
+    )
+    parser.add_argument(
+        "--adam_batch_size",
+        type=int,
+        default=64,
+        help="Batch size for Adam (default: 64)",
+    )
+
     # Arguments for Genetic Algorithm
-    parser.add_argument('--synchronous', action='store_true', 
-                        help="Use synchronous cellular automata")
-    parser.add_argument('--grid_size', type=int, 
-                        help="Grid size for cellular automata (required for genetic)")
-    parser.add_argument('--neighborhood', type=str, 
-                        help="Neighborhood matrix as string (e.g., '[[0,1,0],[1,2,1],[0,1,0]]')")
-    parser.add_argument('--selection', type=str, default='roulette',
-                        choices=['rank_linear', 'rank_exponential', 'tournament', 'roulette'],
-                        help="Selection method for genetic algorithm")
-    parser.add_argument('--wrapped', action='store_true', 
-                        help="Wrap grid edges for genetic algorithm")
-    parser.add_argument('--genetic_epochs', type=int, default=100, 
-                        help="Generations for genetic algorithm (default: 100)")
-    parser.add_argument('--genetic_batch_size', type=int, default=64, 
-                        help="Batch size for genetic evaluation (default: 64)")
-    parser.add_argument('--training_batch_size', type=int, default=500, 
-                        help="Training batch size for genetic (default: 500)")
-    
+    parser.add_argument(
+        "--synchronous", action="store_true", help="Use synchronous cellular automata"
+    )
+    parser.add_argument(
+        "--grid_size",
+        type=int,
+        help="Grid size for cellular automata (required for genetic)",
+    )
+    parser.add_argument(
+        "--neighborhood",
+        type=str,
+        help="Neighborhood matrix as string (e.g., '[[0,1,0],[1,2,1],[0,1,0]]')",
+    )
+    parser.add_argument(
+        "--selection",
+        type=str,
+        default="roulette",
+        choices=["rank_linear", "rank_exponential", "tournament", "roulette"],
+        help="Selection method for genetic algorithm",
+    )
+    parser.add_argument(
+        "--wrapped", action="store_true", help="Wrap grid edges for genetic algorithm"
+    )
+    parser.add_argument(
+        "--genetic_epochs",
+        type=int,
+        default=100,
+        help="Generations for genetic algorithm (default: 100)",
+    )
+    parser.add_argument(
+        "--genetic_batch_size",
+        type=int,
+        default=64,
+        help="Batch size for genetic evaluation (default: 64)",
+    )
+    parser.add_argument(
+        "--training_batch_size",
+        type=int,
+        default=500,
+        help="Training batch size for genetic (default: 500)",
+    )
+
     args = parser.parse_args()
-    
+
     # Validate arguments
-    if args.method == 'genetic':
+    if args.method == "genetic":
         if not args.grid_size or not args.neighborhood:
-            parser.error("--grid_size and --neighborhood are required for genetic method")
+            parser.error(
+                "--grid_size and --neighborhood are required for genetic method"
+            )
 
         try:
             args.neighborhood = ast.literal_eval(args.neighborhood)
         except:
             parser.error("Invalid --neighborhood format. Use Python list syntax.")
-    
+
     return args
 
 
@@ -219,8 +261,10 @@ def adam_training(
         torch.save(model.state_dict(), f"saved_models/{model_name}")
         print(f"Model saved to saved_models/{model_name}")
     print(
-        f"Final test result on {epochs} epochs is {model.final_evaluate(test_loader)}")
+        f"Final test result on {epochs} epochs is {model.final_evaluate(test_loader)}"
+    )
     return model
+
 
 class LoadingAnimation:
     def __init__(self, message="Loading"):
@@ -248,11 +292,13 @@ class LoadingAnimation:
         self.done = True
         self._thread.join()
 
+
 # Example usage:
 # anim = LoadingAnimation("Training in progress")
 # anim.start()
 # ... your long-running code ...
 # anim.stop()
+
 
 def main():
     args = parse_args()
@@ -262,14 +308,14 @@ def main():
     anim = LoadingAnimation("Training in progress")
     try:
         anim.start()
-        if args.method == 'adam':
+        if args.method == "adam":
             adam_training(
                 epochs=args.adam_epochs,
                 batch_size=args.adam_batch_size,
                 small_mnist=args.small_mnist,
-                save_model=args.save_model
+                save_model=args.save_model,
             )
-        elif args.method == 'genetic':
+        elif args.method == "genetic":
             cellular_genetic_training(
                 filename="results.csv",
                 synchronous=args.synchronous,
@@ -281,31 +327,32 @@ def main():
                 epochs=args.genetic_epochs,
                 batch_size=args.genetic_batch_size,
                 training_batch_size=args.training_batch_size,
-                save_model=args.save_model
+                save_model=args.save_model,
             )
     finally:
         anim.stop()
+
 
 if __name__ == "__main__":
     main()
 
 # if __name__ == "__main__":
-    # cellular_genetic_training(
-    #     filename="Test_two_points_cross.csv",
-    #     synchronous=False,
-    #     grid_size=21,
-    #     neighborhood_type=[
-    #         [0, 0, 0, 1, 0, 0, 0],
-    #         [0, 0, 1, 1, 1, 0, 0],
-    #         [0, 1, 1, 1, 1, 1, 0],
-    #         [1, 1, 1, 2, 1, 1, 1],
-    #         [0, 1, 1, 1, 1, 1, 0],
-    #         [0, 0, 1, 1, 1, 0, 0],
-    #         [0, 0, 0, 1, 0, 0, 0]
-    #     ],
-    #     selection_type="roulette",
-    #     wrapped=True,
-    #     small_mnist=False,
-    #     epochs=1000,
-    #     batch_size=64,
-    # )
+# cellular_genetic_training(
+#     filename="Test_two_points_cross.csv",
+#     synchronous=False,
+#     grid_size=21,
+#     neighborhood_type=[
+#         [0, 0, 0, 1, 0, 0, 0],
+#         [0, 0, 1, 1, 1, 0, 0],
+#         [0, 1, 1, 1, 1, 1, 0],
+#         [1, 1, 1, 2, 1, 1, 1],
+#         [0, 1, 1, 1, 1, 1, 0],
+#         [0, 0, 1, 1, 1, 0, 0],
+#         [0, 0, 0, 1, 0, 0, 0]
+#     ],
+#     selection_type="roulette",
+#     wrapped=True,
+#     small_mnist=False,
+#     epochs=1000,
+#     batch_size=64,
+# )

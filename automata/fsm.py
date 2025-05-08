@@ -11,7 +11,7 @@ class CellularEvolutionaryAutomata(ABC):
         grid_size,
         neighborhood_type: list,
         selection_type,
-        cross_over_method='two_point',
+        cross_over_method="two_point",
         training_batch_size=None,
         variation_factor=0.05,
         wrapped=True,
@@ -73,7 +73,7 @@ class CellularEvolutionaryAutomata(ABC):
             return crossover_mask
         if cross_over_method == "simple":
             return crossover
-        if cross_over_method == 'one_point':
+        if cross_over_method == "one_point":
             return crossover_one_point
         raise ValueError("No such crossover method.")
 

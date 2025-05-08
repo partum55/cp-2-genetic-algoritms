@@ -249,6 +249,7 @@ def crossover_two_point(parent1, parent2, small):
 
     return child
 
+
 def crossover_one_point(parent1, parent2, small):
     child = CNN(small).to(CNN.dataset_device)
     for child_param, param1, param2 in zip(
@@ -278,6 +279,7 @@ def crossover_one_point(parent1, parent2, small):
         child_param.data.copy_(child_flat.view_as(param1.data))
 
     return child
+
 
 def mutate(model, mutation_rate=0.1, scale=0.15):
     for name, param in model.named_parameters():
