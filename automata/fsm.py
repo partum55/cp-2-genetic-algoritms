@@ -87,15 +87,12 @@ class CellularEvolutionaryAutomata(ABC):
             else self.get_neighborhood_bounded(cell_pos)
         )
 
-    def create_fitness_hash_map(self, reuse: dict = None):
+    def create_fitness_hash_map(self):
         table = {}
         for y in range(self.height):
             for x in range(self.width):
                 coord = (y, x)
-                if reuse and coord in reuse:
-                    table[coord] = reuse[coord]
-                else:
-                    table[coord] = self.grid[y][x].evaluate_cached()
+                table[coord] = self.grid[y][x].evaluate_cached()
         return table
 
     def get_neighborhood_fitness(self, neighborhood_positions):
@@ -175,7 +172,7 @@ class SyncCEA(CellularEvolutionaryAutomata):
         elite_fitness = {
             coord: self.fitness_table[coord] for coord in top_k_coordinates
         }
-        self.fitness_table = self.create_fitness_hash_map(reuse=elite_fitness)
+        self.fitness_table = self.create_fitness_hash_map()
         self.gen += 1
         return (
             self.get_best_train_fitness(),
@@ -192,6 +189,12 @@ class AsyncCEA(CellularEvolutionaryAutomata):
             variation_factor=self.variation_rate,
             seed=self.gen + 1,
         )
+
+        for y in range(self.height):
+            for x in range(self.width):
+                coord = (y, x)
+                self.fitness_table[coord] = self.grid[y][x].evaluate_cached()
+
         k = max(1, int(self.width * self.height * elite))
 
         top_k_heap = [(fitness, coord) for coord, fitness in self.fitness_table.items()]
@@ -206,7 +209,6 @@ class AsyncCEA(CellularEvolutionaryAutomata):
                 coord = (y, x)
                 if coord in top_k_coords_set:
                     continue
-
                 child = self.get_child_from_cell(coord)
                 child_fitness = child.evaluate_cached()
                 self.fitness_table[coord] = child_fitness

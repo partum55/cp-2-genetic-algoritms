@@ -132,7 +132,6 @@ class CNN(nn.Module):
         """
         if cls.cached_images is None or cls.cached_labels is None:
             raise ValueError("Dataset not preloaded. Call CNN.preload_dataset() first.")
-        # print(f"Preparing evaluation batch with sample size: {sample_size}")
         # Set seed if provided for reproducibility
         if seed is not None:
             torch.manual_seed(seed)
