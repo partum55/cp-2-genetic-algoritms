@@ -1,5 +1,7 @@
 import os
 import json
+import random
+
 import torch
 from model.cnn import CNN
 from automata.fsm import SyncCEA, AsyncCEA
@@ -53,7 +55,7 @@ def train_and_save_cnn_model(epochs=20):
     print("Training standard CNN model...")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = CNN(device).to(device)
-    model.train_adam(train_loader, lr=1e-3, epochs=epochs)
+    model.train_adam(train_loader, epochs=epochs)
 
     # Evaluate the model
     train_accuracy = model.evaluate(train_loader)
@@ -95,10 +97,10 @@ def train_and_save_cea_models(grid_size=5, epochs=20):
 
     # Train SyncCEA
     print("\nTraining SyncCEA model...")
-    sync_cea = SyncCEA(grid_size, neighborhood_type, "rank_exponential", device, train_loader, test_loader)
+    sync_cea = SyncCEA(grid_size, neighborhood_type, "rank_exponential", train_loader, test_loader)
 
     # Fix the mutation rate bug by setting it explicitly
-    sync_cea.mutation_rate = sync_cea.get_mutation_rate()
+    sync_cea.mutation_rate = 0
 
     for gen in range(epochs):
         print(f"Generation {sync_cea.gen} best train fitness: {sync_cea.get_best_train_fitness()}")

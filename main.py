@@ -156,7 +156,7 @@ def adam_training(
 
     # Initialize the model and train it using Adam optimizer
     model = CNN(device).to(device)
-    model.train_adam(train_loader, lr=1e-3, epochs=epochs)
+    model.train_adam(train_loader, epochs=epochs)
     if save_model:
         ensure_dir("saved_models")
         torch.save(model.state_dict(), f"saved_models/{model_name}")
@@ -168,13 +168,15 @@ if __name__ == "__main__":
     cellular_genetic_training(
         filename="Test_two_points_cross.csv",
         synchronous=False,
-        grid_size=10,
+        grid_size=21,
         neighborhood_type=[
-            [0, 0, 1, 0, 0],
-            [0, 1, 1, 1, 0],
-            [1, 1, 2, 1, 1],
-            [0, 1, 1, 1, 0],
-            [0, 0, 1, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 1, 1, 0, 0],
+            [0, 1, 1, 1, 1, 1, 0],
+            [1, 1, 1, 2, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1, 0],
+            [0, 0, 1, 1, 1, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0]
         ],
         selection_type="roulette",
         wrapped=True,
