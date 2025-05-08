@@ -167,7 +167,7 @@ def adam_training(
 if __name__ == "__main__":
     cellular_genetic_training(
         filename="Test_two_points_cross.csv",
-        synchronous=False,
+        synchronous=True,
         grid_size=10,
         neighborhood_type=[
             [0, 0, 1, 0, 0],
