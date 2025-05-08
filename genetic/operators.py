@@ -11,44 +11,43 @@ def fitness_function(model, data_loader):
     return model.evaluate(data_loader)
 
 
-def selection_tournament(population, fitnesses, selection_probability=0.75):
+
+def selection_tournament(population, fitnesses, num=2, tournament_size=3, selection_probability=0.75):
     """
     Tournament selection.
 
     Parameters:
     - population: list of individuals
-    - fitnesses: list of fitness value
-    - num: num of individuals to select (>= 2)
-    - tournament_size: num of contestants in the tournament
-    - selection_probability: probability of the strongest individual to win
-
+    - fitnesses: list of fitness values
+    - num: number of individuals to select (>= 2)
+    - tournament_size: number of contestants in each tournament
+    - selection_probability: probability that the best individual in the tournament wins
     Returns:
-    - selected individuals (winners)
+    - list of selected individuals (winners)
 
     Notes:
     - Higher tournament_size values create stronger selection pressure
     - For tournament_size=1, selection becomes completely random
     - The same individual may be selected multiple times
     """
-    indexes = list(range(len(population)))
-    random.shuffle(indexes)
+    selected = []
+    pop_size = len(population)
 
-    group_size = len(population) // 3
-    group1 = indexes[:group_size]
-    group2 = indexes[group_size : 2 * group_size]
-    group3 = indexes[2 * group_size : 3 * group_size]
-    groups = [group1, group2, group3]
+    for _ in range(num):
+        # Choose random individuals for tournament
+        indices = random.sample(range(pop_size), tournament_size)
+        tournament = [(i, fitnesses[i]) for i in indices]
+        tournament.sort(key=lambda x: x[1], reverse=True)  # sort by fitness
 
-    winners = []
-    for group in groups:
-        if random.random() < selection_probability:
-            winner_idx = max(group, key=lambda i: fitnesses[i])
+        # Probabilistically pick winner from sorted tournament
+        for rank, (idx, _) in enumerate(tournament):
+            if random.random() < selection_probability * ((1 - selection_probability) ** rank):
+                selected.append(population[idx])
+                break
         else:
-            winner_idx = random.choice(group)
-        winners.append((fitnesses[winner_idx], population[winner_idx]))
+            selected.append(population[tournament[-1][0]])
 
-    winners.sort(reverse=True, key=lambda x: x[0])
-    return [winners[0], winners[1]]
+    return selected
 
 
 def selection_roulette(population, fitnesses, num=2):

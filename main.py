@@ -50,10 +50,11 @@ def parse_args():
         help="Grid size for cellular automata (required for genetic)",
     )
     parser.add_argument(
-        "--neighborhood",
-        type=str,
-        help="Neighborhood matrix as string (e.g., '[[0,1,0],[1,2,1],[0,1,0]]')",
-    )
+    "--neighborhood",
+    type=str,
+    required=True,
+    help="Neighborhood matrix as string (e.g. '[[0,1,0],[1,2,1],[0,1,0]]') or preset name (m1, m2, c1, c2, fn1, fn2)"
+)
     parser.add_argument(
         "--selection",
         type=str,
@@ -61,6 +62,13 @@ def parse_args():
         choices=["rank_linear", "rank_exponential", "tournament", "roulette"],
         help="Selection method for genetic algorithm",
     )
+    parser.add_argument(
+        "--model_name",
+        type=str,
+        required=False,
+        default="best_cea",
+        help="Name of the model to save (default: best_cea)"
+)
     parser.add_argument(
         "--wrapped", action="store_true", help="Wrap grid edges for genetic algorithm"
     )
@@ -82,6 +90,12 @@ def parse_args():
         default=500,
         help="Training batch size for genetic (default: 500)",
     )
+    parser.add_argument(
+        "--sample_size",
+        type=float,
+        default=1,
+        help="Sample size for genetic evaluation (default: 1)",
+    )
 
     args = parser.parse_args()
 
@@ -91,11 +105,6 @@ def parse_args():
             parser.error(
                 "--grid_size and --neighborhood are required for genetic method"
             )
-
-        try:
-            args.neighborhood = ast.literal_eval(args.neighborhood)
-        except:
-            parser.error("Invalid --neighborhood format. Use Python list syntax.")
 
     return args
 
@@ -118,6 +127,8 @@ def cellular_genetic_training(
     batch_size=64,
     training_batch_size=500,
     save_model=True,
+    sample_size=1,
+    model_name="best_model.pth",
 ):
     """
     Run the Cellular Genetic Algorithm with the specified parameters.
@@ -163,7 +174,7 @@ def cellular_genetic_training(
     CNN.dataset_device = device
     CNN.batch_size = batch_size  # Set the batch size for the dataset
     ### for BIG MNIST dataset train_loader has 50000, san
-    CNN.preload_dataset(train_loader, sample_size=0.04)
+    CNN.preload_dataset(train_loader, sample_size)
     CNN.prepare_evaluation_batch(
         sample_size=training_batch_size, variation_factor=0.05, seed=0
     )
@@ -293,12 +304,6 @@ class LoadingAnimation:
         self._thread.join()
 
 
-# Example usage:
-# anim = LoadingAnimation("Training in progress")
-# anim.start()
-# ... your long-running code ...
-# anim.stop()
-
 
 def main():
     args = parse_args()
@@ -322,12 +327,14 @@ def main():
                 grid_size=args.grid_size,
                 neighborhood_type=args.neighborhood,
                 selection_type=args.selection,
-                wrapped=args.wrapped,
+                wrapped=args.wrapped,   
                 small_mnist=args.small_mnist,
                 epochs=args.genetic_epochs,
                 batch_size=args.genetic_batch_size,
                 training_batch_size=args.training_batch_size,
                 save_model=args.save_model,
+                sample_size=args.sample_size,
+                model_name=args.model_name,
             )
     finally:
         anim.stop()
