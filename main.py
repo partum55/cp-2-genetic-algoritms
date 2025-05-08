@@ -50,10 +50,11 @@ def parse_args():
         help="Grid size for cellular automata (required for genetic)",
     )
     parser.add_argument(
-        "--neighborhood",
-        type=str,
-        help="Neighborhood matrix as string (e.g., '[[0,1,0],[1,2,1],[0,1,0]]')",
-    )
+    "--neighborhood",
+    type=str,
+    required=True,
+    help="Neighborhood matrix as string (e.g. '[[0,1,0],[1,2,1],[0,1,0]]') or preset name (m1, m2, c1, c2, fn1, fn2)"
+)
     parser.add_argument(
         "--selection",
         type=str,
@@ -97,11 +98,6 @@ def parse_args():
             parser.error(
                 "--grid_size and --neighborhood are required for genetic method"
             )
-
-        try:
-            args.neighborhood = ast.literal_eval(args.neighborhood)
-        except:
-            parser.error("Invalid --neighborhood format. Use Python list syntax.")
 
     return args
 
@@ -299,12 +295,6 @@ class LoadingAnimation:
         self.done = True
         self._thread.join()
 
-
-# Example usage:
-# anim = LoadingAnimation("Training in progress")
-# anim.start()
-# ... your long-running code ...
-# anim.stop()
 
 
 def main():

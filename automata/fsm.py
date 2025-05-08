@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 from genetic.operators import *
 from model.cnn import CNN
+import ast
 
 
 class CellularEvolutionaryAutomata(ABC):
@@ -42,7 +43,7 @@ class CellularEvolutionaryAutomata(ABC):
         )
 
     def get_neighborhood_type(self, neighborhood_type):
-        if isinstance(neighborhood_type, str):
+        if neighborhood_type.lower() in ['m1', 'm2', 'c1', 'c2', 'fn1', 'fn2']:
             if neighborhood_type == "m1":
                 return [[1, 1, 1], [1, 2, 1], [1, 1, 1]]
             if neighborhood_type == "m2":
@@ -81,14 +82,17 @@ class CellularEvolutionaryAutomata(ABC):
                     [0, 0, 1, 0, 0],
                     [0, 0, 1, 0, 0]
                 ]
-        elif isinstance(neighborhood_type, list):
-            if len(neighborhood_type) != len(neighborhood_type[0]):
-                raise ValueError("Neighborhood type must be a square matrix.")
-            if len(neighborhood_type) > self.width:
-                raise ValueError("Neighborhood type is larger than grid size.")
-            return neighborhood_type
         else:
-            raise ValueError("Invalid neighborhood type.")
+            try:
+                neighborhood = ast.literal_eval(neighborhood_type)
+            except:
+                raise ValueError("Invalid --neighborhood format. Use Python list syntax.")
+
+            if len(neighborhood) != len(neighborhood[0]):
+                raise ValueError("Neighborhood type must be a square matrix.")
+            if len(neighborhood) > self.width:
+                raise ValueError("Neighborhood type is larger than grid size.")
+            return neighborhood
 
         
     @staticmethod
