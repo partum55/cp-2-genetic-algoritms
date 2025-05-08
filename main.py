@@ -65,7 +65,7 @@ def parse_args():
     parser.add_argument(
         "--model_name",
         type=str,
-        required=True,
+        required=False,
         default="best_cea",
         help="Name of the model to save (default: best_cea)"
 )
@@ -327,7 +327,7 @@ def main():
                 grid_size=args.grid_size,
                 neighborhood_type=args.neighborhood,
                 selection_type=args.selection,
-                wrapped=args.wrapped,
+                wrapped=args.wrapped,   
                 small_mnist=args.small_mnist,
                 epochs=args.genetic_epochs,
                 batch_size=args.genetic_batch_size,
