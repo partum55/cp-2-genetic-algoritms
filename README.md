@@ -1,57 +1,112 @@
-# Artificial Life Simulation with Cellular Evolutionary Automata
+# Штучне життя через клітинні еволюційні автомати
 
-## Project Description
-This project implements a simulation of artificial life using Cellular Evolutionary Automata (CEA). The system models evolutionary processes in a grid-based environment, where neural networks evolve through genetic algorithms. The project is designed to explore emergent behaviors and optimization techniques inspired by natural evolution.
+Цей проєкт впроваджує симуляцію штучного життя за допомогою клітинних еволюційних автоматів (CEA) для розпізнавання рукописних цифр MNIST. Система моделює еволюційні процеси в середовищі на основі сітки, де нейронні мережі еволюціонують за допомогою генетичних алгоритмів.
 
-## Features
-- **Neural Network Models**: Convolutional Neural Networks (CNNs) are used as individuals in the population.
-- **Genetic Operators**: Includes selection, crossover, and mutation for evolving the population.
-- **Cellular Automata**: Implements synchronous and asynchronous CEA for grid-based evolution.
-- **Fitness Evaluation**: Evaluates individuals based on their performance on the MNIST dataset.
+## Опис проєкту
 
-## Modules
-### 1. `model/data_load.py`
-Handles loading and preprocessing of the MNIST dataset. It defines `train_loader` and `test_loader` for training and testing the CNN models.
+В основі проєкту лежить концепція **клітинного автомату** — дискретної математичної моделі, що складається з регулярної сітки клітин, кожна з яких може перебувати в одному з скінченної кількості станів. У нашому випадку:
 
-### 2. `model/cnn.py`
-Defines the CNN architecture and provides utility methods for:
-- Evaluating the model's accuracy.
-- Getting and setting flattened parameters for genetic operations.
-- Creating random models for initialization.
+- **Кожна клітина автомату** — це повноцінна нейронна мережа з власними параметрами
+- **Стан клітини** — визначається вагами та біасами нейронної мережі
+- **Правила переходу** — визначаються генетичними операторами (селекція, схрещування, мутація)
+- **Околи клітин** — визначають, які нейронні мережі взаємодіють між собою під час еволюції
 
-### 3. `genetic/operators.py`
-Implements genetic operators:
-- **Selection**: Includes tournament, roulette, Boltzmann, and rank-based selection methods.
-- **Crossover**: Combines parameters from two parent models to create a child.
-- **Mutation**: Introduces random changes to a model's parameters.
+## Особливості
 
-### 4. `automata/fsm.py`
-Defines the Cellular Evolutionary Automata framework:
-- **SyncCEA**: Updates the entire grid synchronously.
-- **AsyncCEA**: Updates the grid asynchronously, cell by cell.
-- Supports different neighborhood types and selection methods.
+- **Нейронні мережі як особи популяції**: Використання CNN для класифікації MNIST
+- **Генетичні оператори**: Реалізація різних методів селекції, схрещування та мутації
+- **Клітинні автомати**: Синхронні та асинхронні варіанти CEA
+- **Веб-інтерфейс**: Візуалізація та порівняння моделей
 
-## Installation
-1. Clone the repository:
+## Структура проєкту
+
+```
+.
+├── app.py                 # Flask додаток для веб-інтерфейсу
+├── model/
+│   ├── cnn.py             # Реалізація CNN моделі
+│   ├── data_load.py       # Завантаження та обробка MNIST даних
+│   └── small_data_load.py # Завантаження малого набору даних
+├── genetic/
+│   └── operators.py       # Генетичні оператори (селекція, схрещування, мутація)
+├── automata/
+│   └── fsm.py             # Реалізація клітинних еволюційних автоматів
+├── static/                # Статичні файли для веб-інтерфейсу
+│   ├── css/
+│   ├── js/
+│   └── index.html
+├── main.py                # Головний скрипт для запуску тренування
+└── requirements.txt       # Залежності проєкту
+```
+
+## Встановлення
+
+1. Клонуйте репозиторій:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/partum55/cp-2-genetic-algoritms
    ```
-2. Navigate to the project directory:
+2. Перейдіть у директорію проєкту:
    ```bash
-   cd cp-2-artificial-life
+   cd cp-2-genetic-algoritms
    ```
-3. Install dependencies:
+3. Встановіть залежності:
    ```bash
    pip install -r requirements.txt
    ```
 
-## Usage
-1. Train and evolve the population:
-   ```python
-   ```
+## Використання
 
-## Contributors
+### Тренування моделей
 
+Стандартна CNN:
+```bash
+python main.py --method adam --adam_epochs 20 --save_model
+```
 
-## License
-This project is licensed under the MIT License.
+Синхронний CEA:
+```bash
+python main.py --method genetic --synchronous --grid_size 5 --neighborhood "[[0,1,0],[1,2,1],[0,1,0]]" --selection rank_exponential --genetic_epochs 100 --save_model
+```
+
+Асинхронний CEA:
+```bash
+python main.py --method genetic --grid_size 5 --neighborhood "[[0,1,0],[1,2,1],[0,1,0]]" --selection rank_exponential --genetic_epochs 100 --save_model
+```
+
+### Запуск веб-інтерфейсу
+
+```bash
+python app.py
+```
+
+Після запуску, відкрийте браузер і перейдіть за адресою: http://localhost:5000
+
+## Реалізація клітинних автоматів
+
+Проєкт реалізує два типи клітинних еволюційних автоматів:
+
+### Синхронний CEA (SyncCEA)
+- Оновлює всю сітку одночасно в кожному поколінні
+- Підтримує елітарну стратегію для збереження найкращих особин
+- Усі клітини автомату змінюють свій стан одночасно на основі стану своїх сусідів у попередньому поколінні
+
+### Асинхронний CEA (AsyncCEA)
+- Оновлює сітку асинхронно, клітина за клітиною
+- Дозволяє виникати більш динамічним еволюційним патернам
+- Кожна клітина оновлюється на основі поточного стану сусідів, що може включати вже оновлені клітини
+
+## Результати
+
+| Модель | Точність | Час навчання |
+|--------|----------|--------------|
+| CNN (Adam) | 99.26%   | Найшвидший |
+| SyncCEA | 48.65%   | Середній |
+| AsyncCEA | 53.91%   | Найдовший |
+
+## Висновки
+
+Проєкт демонструє, що клітинні еволюційні автомати можуть бути ефективним інструментом для навчання нейронних мереж. Хоча традиційні методи (CNN з Adam) показують кращу точність та ефективність для розпізнавання MNIST, еволюційні підходи (SyncCEA та AsyncCEA) показують обнадійливі результати та відкривають нові можливості для дослідження.
+
+## Ліцензія
+
+Цей проєкт ліцензовано за Mozilla Public License 2.0 - див. файл LICENSE для деталей.
