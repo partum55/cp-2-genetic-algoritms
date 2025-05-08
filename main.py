@@ -63,6 +63,12 @@ def parse_args():
         help="Selection method for genetic algorithm",
     )
     parser.add_argument(
+        "--model_name",
+        type=str,
+        default="best_cea",
+        help="Name of the model to save (default: best_cea)",
+    )
+    parser.add_argument(
         "--wrapped", action="store_true", help="Wrap grid edges for genetic algorithm"
     )
     parser.add_argument(
