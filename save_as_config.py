@@ -55,7 +55,7 @@ def train_and_save_cnn_model(epochs=20):
     print("Training standard CNN model...")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = CNN(device).to(device)
-    model.train_adam(train_loader, epochs=epochs)
+    model.train_adam(train_loader, lr=1e-3, epochs=epochs)
 
     # Evaluate the model
     train_accuracy = model.evaluate(train_loader)
