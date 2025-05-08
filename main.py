@@ -335,6 +335,7 @@ def main():
                 batch_size=args.genetic_batch_size,
                 training_batch_size=args.training_batch_size,
                 save_model=args.save_model,
+                sample_size=args.sample_size,
             )
     finally:
         anim.stop()
