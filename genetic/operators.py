@@ -280,7 +280,7 @@ def crossover_one_point(parent1, parent2, small):
     return child
 
 
-def mutate(model, mutation_rate=0.1, scale=0.15):
+def mutate(model, mutation_rate=0.3, scale=0.15):
     for name, param in model.named_parameters():
         if "weight" in name:
             if torch.rand(1) < mutation_rate:
@@ -305,8 +305,7 @@ def improved_mutate(model, mutation_rate=0.1, scale=0.15, fitness_rank=None, tot
         fitness_factor = (fitness_rank / total_ranks) * 1.5  # 0.0-1.5 range
         mutation_rate = mutation_rate * (1 + fitness_factor)
         scale = scale * (1 + fitness_factor * 0.5)
-    
-    # Layer-specific factors
+
     layer_factors = {
         'conv1': 0.7,  # Early layers - more sensitive, mutate less
         'conv2': 0.9,
