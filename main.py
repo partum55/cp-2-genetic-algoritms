@@ -1,6 +1,9 @@
 import os
 import argparse
 import ast
+import sys
+import threading
+import time
 
 
 def parse_args():
@@ -219,32 +222,69 @@ def adam_training(
         f"Final test result on {epochs} epochs is {model.final_evaluate(test_loader)}")
     return model
 
+class LoadingAnimation:
+    def __init__(self, message="Loading"):
+        self.message = message
+        self.done = False
+        self._thread = threading.Thread(target=self._animate)
+        self._thread.daemon = True
+
+    def _animate(self):
+        symbols = "|/-\\"
+        idx = 0
+        while not self.done:
+            sys.stdout.write(f"\r{self.message}... {symbols[idx % len(symbols)]}")
+            sys.stdout.flush()
+            idx += 1
+            time.sleep(0.2)
+        sys.stdout.write("\r" + " " * (len(self.message) + 10) + "\r")
+        sys.stdout.flush()
+
+    def start(self):
+        self.done = False
+        self._thread.start()
+
+    def stop(self):
+        self.done = True
+        self._thread.join()
+
+# Example usage:
+# anim = LoadingAnimation("Training in progress")
+# anim.start()
+# ... your long-running code ...
+# anim.stop()
+
 def main():
     args = parse_args()
-    
-    if args.method == 'adam':
-        from main import adam_training
-        adam_training(
-            epochs=args.adam_epochs,
-            batch_size=args.adam_batch_size,
-            small_mnist=args.small_mnist,
-            save_model=args.save_model
-        )
-    elif args.method == 'genetic':
-        from main import cellular_genetic_training
-        cellular_genetic_training(
-            filename="results.csv",
-            synchronous=False,
-            grid_size=args.grid_size,
-            neighborhood_type=args.neighborhood,
-            selection_type=args.selection,
-            wrapped=args.wrapped,
-            small_mnist=args.small_mnist,
-            epochs=args.genetic_epochs,
-            batch_size=args.genetic_batch_size,
-            training_batch_size=args.training_batch_size,
-            save_model=args.save_model
-        )
+    print("Arguments parsed successfully.")
+    print(f"Method: {args.method}")
+
+    anim = LoadingAnimation("Training in progress")
+    try:
+        anim.start()
+        if args.method == 'adam':
+            adam_training(
+                epochs=args.adam_epochs,
+                batch_size=args.adam_batch_size,
+                small_mnist=args.small_mnist,
+                save_model=args.save_model
+            )
+        elif args.method == 'genetic':
+            cellular_genetic_training(
+                filename="results.csv",
+                synchronous=args.synchronous,
+                grid_size=args.grid_size,
+                neighborhood_type=args.neighborhood,
+                selection_type=args.selection,
+                wrapped=args.wrapped,
+                small_mnist=args.small_mnist,
+                epochs=args.genetic_epochs,
+                batch_size=args.genetic_batch_size,
+                training_batch_size=args.training_batch_size,
+                save_model=args.save_model
+            )
+    finally:
+        anim.stop()
 
 if __name__ == "__main__":
     main()
