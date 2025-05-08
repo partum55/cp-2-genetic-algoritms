@@ -82,6 +82,12 @@ def parse_args():
         default=500,
         help="Training batch size for genetic (default: 500)",
     )
+    parser.add_argument(
+        "--sample_size",
+        type=float,
+        default=1,
+        help="Sample size for genetic evaluation (default: 1)",
+    )
 
     args = parser.parse_args()
 
@@ -118,6 +124,7 @@ def cellular_genetic_training(
     batch_size=64,
     training_batch_size=500,
     save_model=True,
+    sample_size=1,
 ):
     """
     Run the Cellular Genetic Algorithm with the specified parameters.
@@ -163,7 +170,7 @@ def cellular_genetic_training(
     CNN.dataset_device = device
     CNN.batch_size = batch_size  # Set the batch size for the dataset
     ### for BIG MNIST dataset train_loader has 50000, san
-    CNN.preload_dataset(train_loader, sample_size=0.04)
+    CNN.preload_dataset(train_loader, sample_size)
     CNN.prepare_evaluation_batch(
         sample_size=training_batch_size, variation_factor=0.05, seed=0
     )
