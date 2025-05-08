@@ -127,6 +127,7 @@ def cellular_genetic_training(
     training_batch_size=500,
     save_model=True,
     sample_size=1,
+    model_name="best_model.pth",
 ):
     """
     Run the Cellular Genetic Algorithm with the specified parameters.
