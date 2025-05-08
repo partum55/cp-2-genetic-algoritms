@@ -32,11 +32,65 @@ class CellularEvolutionaryAutomata(ABC):
         # As of now one of ['rank_linear', 'tournament', 'roulette','rank_exponential']
 
     def create_grid_population(self, grid_size):
-        return [
-            [CNN(self.small_mnist).to(CNN.dataset_device) for _ in range(grid_size)]
-            for _ in range(grid_size)
-        ]
+        if isinstance(grid_size, int) and grid_size >= 5:
+            return [
+                [CNN(self.small_mnist).to(CNN.dataset_device) for _ in range(grid_size)]
+                for _ in range(grid_size)
+            ]
+        raise ValueError(
+            "Grid size must be an integer greater than or equal to 5."
+        )
 
+    def get_neighborhood_type(self, neighborhood_type):
+        if isinstance(neighborhood_type, str):
+            if neighborhood_type == "m1":
+                return [[1, 1, 1], [1, 2, 1], [1, 1, 1]]
+            if neighborhood_type == "m2":
+                return [
+                    [1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1],
+                    [1, 1, 2, 1, 1],
+                    [1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1]
+                ]
+            if neighborhood_type == "fn1":
+                return [
+                    [0, 1, 0],
+                    [1, 2, 1],
+                    [0, 1, 0],
+                ]
+            if neighborhood_type == "fn2":
+                return [
+                    [0, 0, 1, 0, 0],
+                    [0, 1, 1, 1, 0],
+                    [1, 1, 2, 1, 1],
+                    [0, 1, 1, 1, 0],
+                    [0, 0, 1, 0, 0]
+                ]
+            if neighborhood_type == "c1":
+                return [
+                    [0, 1, 0],
+                    [1, 2, 1],
+                    [0, 1, 0],
+                ]
+            if neighborhood_type == "c2":
+                return [
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0],
+                    [1, 1, 2, 1, 1],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0]
+                ]
+        elif isinstance(neighborhood_type, list):
+            if len(neighborhood_type) != len(neighborhood_type[0]):
+                raise ValueError("Neighborhood type must be a square matrix.")
+            if len(neighborhood_type) > self.width:
+                raise ValueError("Neighborhood type is larger than grid size.")
+            return neighborhood_type
+        else:
+            raise ValueError("Invalid neighborhood type.")
+
+        
     @staticmethod
     def get_neighborhood_deltas(neighborhood):
         positions = []

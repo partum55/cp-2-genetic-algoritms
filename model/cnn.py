@@ -49,10 +49,10 @@ class CNN(nn.Module):
         if sample_size is not None:
             original_size = len(all_labels)
 
-            if isinstance(sample_size, float) and 0 < sample_size < 1:
+            if isinstance(sample_size, float) and 0 < sample_size <= 1:
                 sample_size = int(original_size * sample_size)
 
-            if not isinstance(sample_size, int) or sample_size <= 0:
+            if not isinstance(sample_size, int) or sample_size <= 0 or sample_size > 1:
                 raise ValueError(
                     "sample_size must be positive int or float between 0 and 1"
                 )
