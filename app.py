@@ -35,19 +35,19 @@ def load_models():
     try:
         # Load standard CNN model
         cnn_model = CNN().to(device)
-        cnn_model.load_state_dict(torch.load('saved_models/cnn_model.pth', map_location=device))
+        cnn_model.load_state_dict(torch.load('saved_models/adam.pth', map_location=device))
         models['cnn'] = cnn_model
         print("Loaded CNN model")
 
         # Load best SyncCEA model
         sync_cea_model = CNN().to(device)
-        sync_cea_model.load_state_dict(torch.load('saved_models/sync_cea_best.pth', map_location=device))
+        sync_cea_model.load_state_dict(torch.load('saved_models/syns.pth', map_location=device))
         models['syncCEA'] = sync_cea_model
         print("Loaded SyncCEA model")
 
         # Load best AsyncCEA model
         async_cea_model = CNN().to(device)
-        async_cea_model.load_state_dict(torch.load('saved_models/async_cea_best.pth', map_location=device))
+        async_cea_model.load_state_dict(torch.load('saved_models/asyns.pth', map_location=device))
         models['asyncCEA'] = async_cea_model
         print("Loaded AsyncCEA model")
 

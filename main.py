@@ -239,7 +239,7 @@ def adam_training(
     batch_size=64,
     small_mnist=False,
     save_model=True,
-    model_name="adam_cnn_model.pth",
+    model_name="adam.pth",
 ):
     """
     Train a CNN model using the Adam optimizer.
