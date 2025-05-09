@@ -237,13 +237,11 @@ def crossover_two_point(parent1, parent2, small):
         # Select two crossover points
         point1, point2 = sorted(random.sample(range(length), 2))
 
-        # Create child flat tensor
         child_flat = torch.empty_like(flat1)
         child_flat[:point1] = flat1[:point1]
         child_flat[point1:point2] = flat2[point1:point2]
         child_flat[point2:] = flat1[point2:]
 
-        # Reshape and copy to child
         child_param.data.copy_(child_flat.view_as(param1.data))
 
     return child
@@ -266,21 +264,18 @@ def crossover_one_point(parent1, parent2, small):
             )
             continue
 
-        # Select crossover point
         point = random.randint(0, length - 1)
 
-        # Create child flat tensor
         child_flat = torch.empty_like(flat1)
         child_flat[:point] = flat1[:point]
         child_flat[point:] = flat2[point:]
 
-        # Reshape and copy to child
         child_param.data.copy_(child_flat.view_as(param1.data))
 
     return child
 
 
-def mutate(model, mutation_rate=0.1, scale=0.15):
+def mutate(model, mutation_rate=0.3, scale=0.15):
     for name, param in model.named_parameters():
         if "weight" in name:
             if torch.rand(1) < mutation_rate:
@@ -300,13 +295,11 @@ def improved_mutate(model, mutation_rate=0.1, scale=0.15, fitness_rank=None, tot
     """
     # Apply adaptive mutation if fitness information is available
     if fitness_rank is not None and total_ranks is not None:
-        # Scale mutation rate and scale based on fitness rank
-        # Lower fitness = higher mutation rate and scale
-        fitness_factor = (fitness_rank / total_ranks) * 1.5  # 0.0-1.5 range
+
+        fitness_factor = (fitness_rank / total_ranks) * 1.5
         mutation_rate = mutation_rate * (1 + fitness_factor)
         scale = scale * (1 + fitness_factor * 0.5)
-    
-    # Layer-specific factors
+
     layer_factors = {
         'conv1': 0.7,  # Early layers - more sensitive, mutate less
         'conv2': 0.9,
@@ -320,20 +313,19 @@ def improved_mutate(model, mutation_rate=0.1, scale=0.15, fitness_rank=None, tot
         # Extract layer name
         layer_name = name.split('.')[0]
         
-        # Get layer-specific mutation factor
+
         factor = layer_factors.get(layer_name, 1.0)
-        
-        # Calculate effective mutation rate
+
         effective_rate = mutation_rate * factor
         
         # Different mutation for weights vs biases
         if 'weight' in name:
             if torch.rand(1) < effective_rate:
-                # For weights, apply scaled noise
+
                 param.data += scale * torch.randn_like(param)
         elif 'bias' in name:
-            if torch.rand(1) < effective_rate * 0.7:  # Lower rate for biases
-                # For biases, apply smaller mutations
+            if torch.rand(1) < effective_rate * 0.7:
+
                 param.data += scale * 0.5 * torch.randn_like(param)
     
     return model

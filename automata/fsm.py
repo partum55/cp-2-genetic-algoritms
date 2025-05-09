@@ -51,7 +51,7 @@ class CellularEvolutionaryAutomata(ABC):
             return improved_mutate
         raise ValueError("No such mutation type.")
     def get_neighborhood_type(self, neighborhood_type):
-        if neighborhood_type.lower() in ['m1', 'm2', 'c1', 'c2', 'fn1', 'fn2']:
+        if neighborhood_type.lower() in ['m1', 'm2', 'c1', 'c2', 'vn1', 'vn2']:
             if neighborhood_type == "m1":
                 return [[1, 1, 1], [1, 2, 1], [1, 1, 1]]
             if neighborhood_type == "m2":
